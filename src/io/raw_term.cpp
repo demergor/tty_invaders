@@ -3,10 +3,9 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <termios.h>
 
 #include "tty_invaders/io/term.h"
-
-#include <termios.h>
 
 namespace tty_invaders::io {
 RawTerm::RawTerm() {
