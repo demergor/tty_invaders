@@ -16,6 +16,7 @@ include(FetchContent)
 FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
 FetchContent_MakeAvailable(googletest)
@@ -65,7 +66,15 @@ target_link_options(
 
 add_executable(
   tty_invaders
-  src/main.cpp
+  # src/main.cpp
+
+  src/entities/templates/ships.cpp
+
+  src/gameplay/collision_buffer.cpp
+
+  src/io/raw_term.cpp
+
+  src/rendering/term_dims.cpp
 )
 
 target_link_libraries(
@@ -91,6 +100,7 @@ enable_testing()
 
 add_executable(
   tty_invaders_tests
+  tests/test_main.cpp
   tests/gameplay/collision_buffer_tests.cpp
 )
 
