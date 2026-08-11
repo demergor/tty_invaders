@@ -66,15 +66,7 @@ target_link_options(
 
 add_executable(
   tty_invaders
-  # src/main.cpp
-
-  src/entities/templates/ships.cpp
-
-  src/gameplay/collision_buffer.cpp
-
-  src/io/raw_term.cpp
-
-  src/rendering/term_dims.cpp
+  src/main.cpp
 )
 
 target_link_libraries(

@@ -8,8 +8,10 @@
 
 namespace tty_invaders::entities::templates {
 struct ShipBody {
-  std::vector<geometry::Point> hitbox_pos;
-  std::vector<std::size_t> cannon_pos;
+  const std::vector<geometry::Point> hitbox_pos;
+  const std::vector<std::size_t> cannon_pos;
+  const int br_x;
+  const int br_y;
 };
 } // namespace tty_invaders::entities::templates
 

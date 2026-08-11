@@ -4,9 +4,10 @@
 #include <vector>
 
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/geometry/rect_coords.h"
 
 namespace tty_invaders::rendering {
-RectCoords dirty_area(
+geometry::RectCoords dirty_area(
   const std::vector<entities::EntityType>& old,
   const std::vector<entities::EntityType>& cur
 );

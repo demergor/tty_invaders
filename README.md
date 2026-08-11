@@ -1,4 +1,5 @@
 ## Under Construction:
+- Implement entities' update methods
 - implement rendering logic from collision buffer
 
 ## Future: 

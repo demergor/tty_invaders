@@ -16,7 +16,7 @@ Run this after changing source code.
 
 ## Test
 
-ctest --test-dir build
+ctest --test-dir build --output-on-failure
 
 ---
 

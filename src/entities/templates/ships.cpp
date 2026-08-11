@@ -21,7 +21,9 @@ const ShipBody destroyer {
     {3, 4},
     {2, 5}
   },
-  .cannon_pos {0, 1, 3}
+  .cannon_pos {0, 1, 3},
+  .br_x = 4, 
+  .br_y = 5
 };
 
 const ShipBody fighter {
@@ -38,11 +40,15 @@ const ShipBody fighter {
     {2, 2},
     {4, 2}
   },
-  .cannon_pos {0, 1, 2}
+  .cannon_pos {0, 1, 2},
+  .br_x = 4,
+  .br_y = 2
 };
 
 const ShipBody speeder {
   .hitbox_pos {{1, 0}, {0, 1}, {1, 1}, {2, 1}, {0, 2}, {2, 2}}, //
-  .cannon_pos {0}
+  .cannon_pos {0},
+  .br_x = 2,
+  .br_y = 2
 };
 } // namespace tty_invaders::entities::templates

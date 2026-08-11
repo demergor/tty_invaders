@@ -6,6 +6,11 @@
 
 namespace tty_invaders::entities {
 struct Defender {
+  explicit Defender(const templates::ShipBody* body, const int armor, const int lives);
+
+  void move();
+  void update();
+
   templates::ShipBody body;
   int tl_x, tl_y, br_x, br_y;
   int armor;
@@ -13,11 +18,6 @@ struct Defender {
   int refract;
   int atk_spd;
   effects::StatusEffect effect;
-
-  explicit Defender(const templates::ShipBody* body, const int armor, const int lives);
-
-  void move();
-  void update();
 };
 } // namespace tty_invaders::entities
 
