@@ -3,11 +3,11 @@
 
 #include <vector>
 
-#include "tty_invaders/geometry/coord.h"
+#include "tty_invaders/geometry/point.h"
 
 namespace tty_invaders::entities::templates {
 struct ProjectileBody {
-  const std::vector<geometry::Coord> coords;
+  const std::vector<geometry::Point> points;
   const int br_x;
   const int br_y;
   const int x_offset;

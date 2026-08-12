@@ -39,9 +39,15 @@ set(SANITIZER_OPTIONS
 
 add_library(
   tty_invaders_lib
+  src/entities/invaders.cpp
+  src/entities/projectiles.cpp
   src/entities/templates/ships.cpp
+  src/entities/templates/projectiles.cpp
+
   src/gameplay/collision_buffer.cpp
+
   src/io/raw_term.cpp
+
   src/rendering/term_dims.cpp
 )
 

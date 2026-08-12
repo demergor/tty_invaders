@@ -2,14 +2,14 @@
 
 namespace tty_invaders::entities::templates {
 const ProjectileBody bullet {
-  .coords {{0, 0}}, //
+  .points {{0, 0}}, //
   .br_x = 0,
   .br_y = 0,
   .x_offset = 0
 };
 
 const ProjectileBody power_up {
-  .coords {
+  .points {
     {1, 0}, //
     {0, 1},
     {1, 1},
@@ -22,7 +22,7 @@ const ProjectileBody power_up {
 };
 
 const ProjectileBody rocket {
-  .coords {
+  .points {
     {0, 0}, //
     {1, 0},
     {2, 0},

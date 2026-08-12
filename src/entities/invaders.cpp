@@ -10,7 +10,7 @@
 #include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/entities/templates/ship_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
-#include "tty_invaders/geometry/coord.h"
+#include "tty_invaders/geometry/point.h"
 #include "tty_invaders/opts/game_settings.h"
 #include "tty_invaders/rendering/term_dims.h"
 
@@ -83,7 +83,7 @@ void Invaders::update(
   // TODO: Add Invader move semantics (writing to cb)
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     for (const auto& [x, y] : ship_bodies[i]->hitbox_pos) {
-      geometry::Coord point {tl_xs[i] + x, tl_ys[i] + y};
+      geometry::Point point {tl_xs[i] + x, tl_ys[i] + y};
       if (
         point.x < 0 || point.x >= bounds.width || point.y < 0
         || point.y >= bounds.main_height
