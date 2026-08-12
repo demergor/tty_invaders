@@ -7,21 +7,29 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
-#include "tty_invaders/rendering/render_attr.h"
+#include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::entities {
 struct Projectiles {
-  void update(gameplay::CollisionBuffer&);
+  void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims);
+  void add(
+    const int tl_x,
+    const int tl_y,
+    const int x_vel,
+    const int y_vel,
+    const templates::ProjectileBody* body,
+    const EntityType& owner,
+    const effects::CollisionEffect& effect
+  );
   void clear();
 
   std::vector<int> tl_xs;
   std::vector<int> tl_ys;
   std::vector<int> x_vels;
   std::vector<int> y_vels;
-  std::vector<const ProjectileBody*> bodies;
+  std::vector<const templates::ProjectileBody*> bodies;
   std::vector<EntityType> owners;
   std::vector<effects::CollisionEffect> effects;
-  std::vector<rendering::RenderAttr> render_attrs;
 };
 } // namespace tty_invaders::entities
 

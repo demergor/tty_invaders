@@ -4,12 +4,20 @@
 #include <cstddef>
 #include <stdexcept>
 
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/entities/templates/ship_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/coord.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::entities {
 Invaders::Invaders(
-  const std::vector<const templates::ShipBody*> bodies,
+  const std::vector<const templates::ShipBody*>& ship_bodies,
+  const std::vector<const templates::ProjectileBody*>& projectile_bodies,
   const std::vector<int>& tl_xs,
   const std::vector<int>& tl_ys,
   const std::vector<int>& armor,
@@ -17,7 +25,8 @@ Invaders::Invaders(
   const std::vector<int>& atk_spds,
   const std::vector<effects::StatusEffect> effects
 )
-    : bodies {bodies}
+    : ship_bodies {ship_bodies}
+    , projectile_bodies {projectile_bodies}
     , tl_xs {tl_xs}
     , tl_ys {tl_ys}
     , armor {armor}
@@ -46,6 +55,7 @@ Invaders::Invaders(
 
   if (
     std::find_if(lives.begin(), lives.end(), [](const int val) { return val <= 0; })
+
     != lives.end()
   ) {
     throw std::runtime_error(
@@ -55,17 +65,54 @@ Invaders::Invaders(
 
   br_xs.reserve(tl_xs.size());
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
-    br_xs.emplace_back(tl_xs[i] + bodies[i]->br_x);
+    br_xs.emplace_back(tl_xs[i] + ship_bodies[i]->br_x);
   }
 
   br_ys.reserve(tl_ys.size());
   for (std::size_t i {0}; i < tl_ys.size(); ++i) {
-    br_ys.emplace_back(tl_ys[i] + bodies[i]->br_y);
+    br_ys.emplace_back(tl_ys[i] + ship_bodies[i]->br_y);
   }
 }
 
-void Invaders::update(gameplay::CollisionBuffer& cb) {
+// TODO: Write test
+void Invaders::update(
+  gameplay::CollisionBuffer& cb,
+  Projectiles& projectiles,
+  const rendering::TermDims& bounds
+) {
   // TODO: Add Invader move semantics (writing to cb)
-  // TODO: Add bullet creation (decide update-order of entities)
+  for (std::size_t i {0}; i < tl_xs.size(); ++i) {
+    for (const auto& [x, y] : ship_bodies[i]->hitbox_pos) {
+      geometry::Coord point {tl_xs[i] + x, tl_ys[i] + y};
+      if (
+        point.x < 0 || point.x >= bounds.width || point.y < 0
+        || point.y >= bounds.main_height
+      ) {
+        continue;
+      }
+
+      std::size_t cb_idx {static_cast<std::size_t>(point.y * bounds.width + point.y)};
+      cb.back_types[cb_idx] = EntityType::Invader;
+      cb.back_ids[cb_idx] = i;
+    }
+  }
+
+  // TODO: decide update-order of entities
+  for (std::size_t i {0}; i < tl_xs.size(); ++i) {
+    for (const auto& idx : ship_bodies[i]->cannon_pos) {
+      projectiles.add(
+        tl_xs[i] + ship_bodies[i]->hitbox_pos[idx].x,
+        tl_ys[i] + ship_bodies[i]->hitbox_pos[idx].y,
+        0,
+        1,
+        projectile_bodies[i],
+        EntityType::Invader,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Dmg,
+          .val = opts::game_settings::invader_atk_dmg
+        }
+      );
+    }
+  }
 }
 } // namespace tty_invaders::entities

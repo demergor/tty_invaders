@@ -4,7 +4,8 @@ namespace tty_invaders::entities::templates {
 const ProjectileBody bullet {
   .coords {{0, 0}}, //
   .br_x = 0,
-  .br_y = 0
+  .br_y = 0,
+  .x_offset = 0
 };
 
 const ProjectileBody power_up {
@@ -16,7 +17,8 @@ const ProjectileBody power_up {
     {1, 2}
   },
   .br_x = 2,
-  .br_y = 2
+  .br_y = 2,
+  .x_offset = 1
 };
 
 const ProjectileBody rocket {
@@ -33,6 +35,7 @@ const ProjectileBody rocket {
     {2, 3}
   },
   .br_x = 2,
-  .br_y = 3
+  .br_y = 3,
+  .x_offset = 1
 };
 } // namespace tty_invaders::entities::templates
