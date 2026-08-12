@@ -5,6 +5,7 @@
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/rendering/render_attr.h"
 

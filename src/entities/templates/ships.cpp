@@ -22,7 +22,7 @@ const ShipBody destroyer {
     {2, 5}
   },
   .cannon_pos {0, 1, 3},
-  .br_x = 4, 
+  .br_x = 4,
   .br_y = 5
 };
 
@@ -46,7 +46,14 @@ const ShipBody fighter {
 };
 
 const ShipBody speeder {
-  .hitbox_pos {{1, 0}, {0, 1}, {1, 1}, {2, 1}, {0, 2}, {2, 2}}, //
+  .hitbox_pos {
+    {1, 0}, //
+    {0, 1},
+    {1, 1},
+    {2, 1},
+    {0, 2},
+    {2, 2}
+  },
   .cannon_pos {0},
   .br_x = 2,
   .br_y = 2
