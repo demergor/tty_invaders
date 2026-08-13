@@ -3,16 +3,16 @@
 
 namespace tty_invaders::entities {
 void Projectiles::add(
-  const int tl_x,
-  const int tl_y,
+  const int x,
+  const int y,
   const int x_vel,
   const int y_vel,
   const templates::ProjectileBody* body,
   const EntityType& owner,
   const effects::CollisionEffect& effect
 ) {
-  tl_xs.emplace_back(tl_x);
-  tl_ys.emplace_back(tl_y);
+  xs.emplace_back(x);
+  ys.emplace_back(y);
   x_vels.emplace_back(x_vel);
   y_vels.emplace_back(y_vel);
   bodies.emplace_back(body);
@@ -21,8 +21,8 @@ void Projectiles::add(
 }
 
 void Projectiles::clear() {
-  tl_xs.clear();
-  tl_ys.clear();
+  xs.clear();
+  ys.clear();
   x_vels.clear();
   y_vels.clear();
   bodies.clear();

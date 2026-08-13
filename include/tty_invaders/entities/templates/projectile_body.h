@@ -8,9 +8,8 @@
 namespace tty_invaders::entities::templates {
 struct ProjectileBody {
   const std::vector<geometry::Point> points;
-  const int br_x;
-  const int br_y;
-  const int x_offset;
+  const geometry::Point tl;
+  const geometry::Point br;
 };
 } // namespace tty_invaders::entities::templates
 

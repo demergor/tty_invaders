@@ -23,8 +23,8 @@ struct Projectiles {
   );
   void clear();
 
-  std::vector<int> tl_xs;
-  std::vector<int> tl_ys;
+  std::vector<int> xs;
+  std::vector<int> ys;
   std::vector<int> x_vels;
   std::vector<int> y_vels;
   std::vector<const templates::ProjectileBody*> bodies;

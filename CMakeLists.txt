@@ -100,13 +100,14 @@ add_executable(
   tty_invaders_tests
   tests/test_main.cpp
   tests/gameplay/collision_buffer_tests.cpp
+  tests/entities/invaders_tests.cpp
 )
 
 target_link_libraries(
   tty_invaders_tests
   PRIVATE
     tty_invaders_lib
-    GTest::gtest_main
+    GTest::gtest
 )
 
 target_compile_options(
