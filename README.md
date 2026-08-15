@@ -1,7 +1,7 @@
-## Under Construction:
-- implement entities' update methods
-- add rendering information and bitwise logic to enums
+## Work In Progress:
 - implement rendering logic from collision buffer
+- add (rendering information and) bitwise logic to enums
+- implement entities' update methods
 
 ## Future: 
 - add power ups

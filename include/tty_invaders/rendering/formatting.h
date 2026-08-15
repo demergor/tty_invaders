@@ -28,6 +28,8 @@ enum class Formatting : uint32_t {
   BgYellow = 1u << 16,
   BgBlue = 1u << 17,
 };
+
+// TODO: Implement bitwise stuff and comparison operator
 } // namespace tty_invaders::rendering
 
 #endif // TTY_INVADERS_RENDERING_FORMATTING_H
