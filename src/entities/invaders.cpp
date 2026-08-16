@@ -10,7 +10,6 @@
 #include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/entities/templates/ship_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
-#include "tty_invaders/geometry/point.h"
 #include "tty_invaders/opts/game_settings.h"
 #include "tty_invaders/rendering/term_dims.h"
 
@@ -74,13 +73,12 @@ Invaders::Invaders(
   }
 }
 
-// TODO: Write test
 void Invaders::update(
   gameplay::CollisionBuffer& cb,
   Projectiles& projectiles,
   const rendering::TermDims& bounds
 ) {
-  // TODO: Add Invader move semantics (writing to cb)
+  // TODO: Add Invader movement
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     for (const auto& [x_offset, y_offset] : ship_bodies[i]->hitbox_pos) {
       int hitbox_x {tl_xs[i] + x_offset};
@@ -103,7 +101,6 @@ void Invaders::update(
     }
   }
 
-  // TODO: decide update-order of entities
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     for (const auto& idx : ship_bodies[i]->cannon_pos) {
       projectiles.add(

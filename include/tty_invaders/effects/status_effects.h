@@ -2,6 +2,7 @@
 #define TTY_INVADERS_EFFECTS_STATUS_EFFECTS_H
 
 #include <cstdint>
+#include <utility>
 
 namespace tty_invaders::effects {
 enum class StatusEffect : uint8_t {
@@ -12,8 +13,38 @@ enum class StatusEffect : uint8_t {
   Homing = 1u << 3,
   Laser = 1u << 4
 };
-} // namespace tty_invaders::effects
 
-// TODO: Add bitwise logic
+inline constexpr bool operator==(StatusEffect lop, StatusEffect rop) {
+  return std::to_underlying(lop) == std::to_underlying(rop);
+}
+
+inline constexpr bool operator!=(StatusEffect lop, StatusEffect rop) {
+  return !(lop == rop);
+}
+
+inline constexpr StatusEffect operator|(StatusEffect lop, StatusEffect rop) {
+  return static_cast<StatusEffect>(std::to_underlying(lop) | std::to_underlying(rop));
+}
+
+inline constexpr StatusEffect operator&(StatusEffect lop, StatusEffect rop) {
+  return static_cast<StatusEffect>(std::to_underlying(lop) & std::to_underlying(rop));
+}
+
+inline constexpr StatusEffect operator^(StatusEffect lop, StatusEffect rop) {
+  return static_cast<StatusEffect>(std::to_underlying(lop) ^ std::to_underlying(rop));
+}
+
+inline constexpr StatusEffect& operator|=(StatusEffect& lop, StatusEffect rop) {
+  return lop = lop | rop;
+}
+
+inline constexpr StatusEffect& operator&=(StatusEffect& lop, StatusEffect rop) {
+  return lop = lop & rop;
+}
+
+inline constexpr StatusEffect& operator^=(StatusEffect& lop, StatusEffect rop) {
+  return lop = lop ^ rop;
+}
+} // namespace tty_invaders::effects
 
 #endif // TTY_INVADERS_EFFECTS_STATUS_EFFECTS_H

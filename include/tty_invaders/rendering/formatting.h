@@ -2,6 +2,7 @@
 #define TTY_INVADERS_RENDERING_FORMATTING_H
 
 #include <cstdint>
+#include <utility>
 
 namespace tty_invaders::rendering {
 enum class Formatting : uint32_t {
@@ -29,7 +30,37 @@ enum class Formatting : uint32_t {
   BgBlue = 1u << 17,
 };
 
-// TODO: Implement bitwise stuff and comparison operator
+inline constexpr bool operator==(Formatting lop, Formatting rop) {
+  return std::to_underlying(lop) == std::to_underlying(rop);
+}
+
+inline constexpr bool operator!=(Formatting lop, Formatting rop) {
+  return !(lop == rop);
+}
+
+inline constexpr Formatting operator|(Formatting lop, Formatting rop) {
+  return static_cast<Formatting>(std::to_underlying(lop) | std::to_underlying(rop));
+}
+
+inline constexpr Formatting operator&(Formatting lop, Formatting rop) {
+  return static_cast<Formatting>(std::to_underlying(lop) & std::to_underlying(rop));
+}
+
+inline constexpr Formatting operator^(Formatting lop, Formatting rop) {
+  return static_cast<Formatting>(std::to_underlying(lop) ^ std::to_underlying(rop));
+}
+
+inline constexpr Formatting& operator|=(Formatting& lop, Formatting rop) {
+  return lop = lop | rop;
+}
+
+inline constexpr Formatting& operator&=(Formatting& lop, Formatting rop) {
+  return lop = lop & rop;
+}
+
+inline constexpr Formatting& operator^=(Formatting& lop, Formatting rop) {
+  return lop = lop ^ rop;
+}
 } // namespace tty_invaders::rendering
 
 #endif // TTY_INVADERS_RENDERING_FORMATTING_H
