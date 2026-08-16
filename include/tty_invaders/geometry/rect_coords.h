@@ -1,12 +1,16 @@
 #ifndef TTY_INVADERS_GEOMETRY_RECT_COORDS_H
 #define TTY_INVADERS_GEOMETRY_RECT_COORDS_H
 
+#include <cstddef>
+
 namespace tty_invaders::geometry {
 struct RectCoords {
-  int tl_x {0};
-  int tl_y {0};
-  int br_x {0};
-  int br_y {0};
+  bool empty() const;
+
+  std::size_t tl_x {0};
+  std::size_t tl_y {0};
+  std::size_t br_x {0};
+  std::size_t br_y {0};
 };
 }
 

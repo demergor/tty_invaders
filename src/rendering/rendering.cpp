@@ -13,41 +13,40 @@
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::rendering {
-void render(
-  const gameplay::CollisionBuffer& cb,
-  const geometry::RectCoords bounds,
-  const TermDims& td
-) {
+void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
+  geometry::RectCoords min_rect {dirty_area(cb)};
+  if (min_rect.empty()) {
+    return;
+  }
+
   std::string result;
   result.reserve(
-    static_cast<std::size_t>((bounds.br_x - bounds.tl_x) * bounds.br_y)
-    * expected_render_bytes_per_cell
+    (min_rect.br_x - min_rect.tl_x) * min_rect.br_y * expected_render_bytes_per_cell
   );
 
-  const std::size_t x_start {static_cast<std::size_t>(std::max(bounds.tl_x, 0))};
-  const std::size_t x_end {static_cast<std::size_t>(std::max(bounds.br_x, 0))};
-  const std::size_t y_start {static_cast<std::size_t>(std::max(bounds.tl_y, 0))};
-  const std::size_t y_end {static_cast<std::size_t>(std::max(bounds.br_y, 0))};
-
   Formatting prev {Formatting::None};
-  for (std::size_t i {y_start}; i < y_end; ++i) {
-    for (std::size_t j {x_start}; j < x_end; ++j) {
+  for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y; ++y) {
+    for (std::size_t x {min_rect.tl_x}; x < min_rect.br_x; ++x) {
       RenderAttr ra;
-      switch (cb.back_types[i * td.width + j]) {
-        case entities::EntityType::Bullet:
-          ra.formatting = Formatting::Yellow;
-          ra.ch = 'o';
-          break;
+      switch (cb.back_types[y * td.width + x]) {
         case entities::EntityType::Defender:
           ra.formatting = Formatting::Bold | Formatting::BrightGreen;
           ra.ch = 'D';
           break;
+        case entities::EntityType::DefenderBullet:
+          ra.formatting = Formatting::Green;
+          ra.ch = 'o';
+          break;
         case entities::EntityType::Invader:
-          ra.formatting = Formatting::Red;
+          ra.formatting = Formatting::None;
           ra.ch = 'V';
           break;
+        case entities::EntityType::InvaderBullet:
+          ra.formatting = Formatting::BrightRed | Formatting::Bold;
+          ra.ch = 'o';
+          break;
         case entities::EntityType::PowerUp:
-          ra.formatting = Formatting::Bold | Formatting::BrightBlue;
+          ra.formatting = Formatting::Blue;
           ra.ch = 'P';
           break;
         default:
@@ -64,14 +63,36 @@ void render(
   }
 }
 
-std::string ansi_escape(const Formatting& prev, const Formatting& cur) {
-  // TODO: Implement
-}
-
+// TODO: Write test
 geometry::RectCoords dirty_area(
-  const std::vector<entities::EntityType>& old,
-  const std::vector<entities::EntityType>& cur
+  const gameplay::CollisionBuffer& cb, const TermDims& bounds
 ) {
-  // TODO: Implement
+  geometry::RectCoords dirty_area {};
+  bool first {true};
+
+  for (std::size_t y {0}; y < cb.back_types.size(); ++y) {
+    for (std::size_t x {0}; x < bounds.width; ++x) {
+      std::size_t cb_idx {y * bounds.width + x};
+      if (cb.back_types[cb_idx] == cb.front_types[cb_idx]) {
+        continue;
+      }
+
+      if (first) {
+        dirty_area.tl_x = x;
+        dirty_area.tl_y = y;
+        dirty_area.br_x = x + 1;
+        dirty_area.br_y = y + 1;
+        first = false;
+        continue;
+      }
+
+      dirty_area.tl_x = std::min(x, dirty_area.tl_x);
+      dirty_area.tl_y = std::min(y, dirty_area.tl_y);
+      dirty_area.br_x = std::max(x, dirty_area.br_x);
+      dirty_area.br_y = std::max(y, dirty_area.br_y);
+    }
+  }
+
+  return dirty_area;
 }
 } // namespace tty_invaders::rendering
