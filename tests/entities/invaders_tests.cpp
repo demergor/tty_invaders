@@ -19,7 +19,7 @@ namespace tty_invaders::entities {
 class InvaderTest : public ::testing::Test {
 protected:
   inline rendering::TermDims term_dims(
-    const int main_height, const int bar_height, const int width
+    const std::size_t main_height, const std::size_t bar_height, const std::size_t width
   ) const {
     rendering::TermDims td;
     td.main_height = main_height;
@@ -64,7 +64,55 @@ protected:
   Projectiles projectiles;
 };
 
-TEST_F(InvaderTest, TestProjectilesAddedToProjectiles) {
+// NOTE: This test doesn't account for invader movement yet
+TEST_F(InvaderTest, TestInvaderHitboxesAddedToCollisionBuffer) {
+  rendering::TermDims td {term_dims(24, 1, 80)};
+  gameplay::CollisionBuffer cb {collision_buffer(td)};
+  invaders.update(cb, projectiles, td);
+
+  std::vector<std::size_t> expected_cb_idxs;
+  for (const auto& [x_offset, y_offset] : templates::destroyer.hitbox_pos) {
+    expected_cb_idxs.emplace_back(
+      (10 + static_cast<std::size_t>(y_offset)) * td.width
+      + (10 + static_cast<std::size_t>(x_offset))
+    );
+  }
+
+  for (const auto& [x_offset, y_offset] : templates::fighter.hitbox_pos) {
+    expected_cb_idxs.emplace_back(
+      (10 + static_cast<std::size_t>(y_offset)) * td.width
+      + (20 + static_cast<std::size_t>(x_offset))
+    );
+  }
+
+  for (const auto& [x_offset, y_offset] : templates::speeder.hitbox_pos) {
+    expected_cb_idxs.emplace_back(
+      (10 + static_cast<std::size_t>(y_offset)) * td.width
+      + (30 + static_cast<std::size_t>(x_offset))
+    );
+  }
+
+  constexpr EntityType expected_entity_type {EntityType::Invader};
+  std::vector<std::size_t> expected_ids {std::vector<std::size_t>(17, 0)};
+
+  for (std::size_t i {0}; i < templates::fighter.hitbox_pos.size(); ++i) {
+    expected_ids.emplace_back(1);
+  }
+
+  for (std::size_t i {0}; i < templates::speeder.hitbox_pos.size(); ++i) {
+    expected_ids.emplace_back(2);
+  }
+
+  ASSERT_EQ(cb.front_types.size(), cb.back_types.size());
+  ASSERT_EQ(cb.front_types.size(), cb.back_ids.size());
+
+  for (std::size_t i {0}; i < expected_cb_idxs.size(); ++i) {
+    ASSERT_EQ(cb.back_types[expected_cb_idxs[i]], expected_entity_type);
+    ASSERT_EQ(cb.back_ids[expected_cb_idxs[i]], expected_ids[i]);
+  }
+}
+
+TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
   rendering::TermDims td {term_dims(24, 1, 80)};
   gameplay::CollisionBuffer cb {collision_buffer(td)};
   invaders.update(cb, projectiles, td);

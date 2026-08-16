@@ -6,7 +6,7 @@
 
 namespace tty_invaders::entities {
 enum class EntityType : std::uint8_t {
-  None, Bullet, Defender, Invader, PowerUp
+  None, Defender, DefenderBullet, Invader, InvaderBullet, PowerUp
 };
 
 inline constexpr EntityType operator&(const EntityType& lop, const EntityType& rop) {

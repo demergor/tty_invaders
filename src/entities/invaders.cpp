@@ -82,16 +82,22 @@ void Invaders::update(
 ) {
   // TODO: Add Invader move semantics (writing to cb)
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
-    for (const auto& [x, y] : ship_bodies[i]->hitbox_pos) {
-      geometry::Point point {tl_xs[i] + x, tl_ys[i] + y};
-      if (
-        point.x < 0 || point.x >= bounds.width || point.y < 0
-        || point.y >= bounds.main_height
-      ) {
+    for (const auto& [x_offset, y_offset] : ship_bodies[i]->hitbox_pos) {
+      int hitbox_x {tl_xs[i] + x_offset};
+      int hitbox_y {tl_ys[i] + y_offset};
+
+      if (hitbox_x < 0 || hitbox_y < 0) {
         continue;
       }
 
-      std::size_t cb_idx {static_cast<std::size_t>(point.y * bounds.width + point.y)};
+      std::size_t grid_x {static_cast<std::size_t>(hitbox_x)};
+      std::size_t grid_y {static_cast<std::size_t>(hitbox_y)};
+
+      if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
+        continue;
+      }
+
+      std::size_t cb_idx {grid_y * bounds.width + grid_x};
       cb.back_types[cb_idx] = EntityType::Invader;
       cb.back_ids[cb_idx] = i;
     }
