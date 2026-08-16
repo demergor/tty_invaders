@@ -46,9 +46,12 @@ add_library(
 
   src/gameplay/collision_buffer.cpp
 
+  src/geometry/rect_coords.cpp
+
   src/io/raw_term.cpp
 
   src/rendering/term_dims.cpp
+  src/rendering/rendering.cpp
 )
 
 target_include_directories(
@@ -99,8 +102,14 @@ enable_testing()
 add_executable(
   tty_invaders_tests
   tests/test_main.cpp
-  tests/gameplay/collision_buffer_tests.cpp
   tests/entities/invaders_tests.cpp
+  tests/rendering/rendering_tests.cpp
+)
+
+target_include_directories(
+  tty_invaders_tests
+  PRIVATE
+    tests
 )
 
 target_link_libraries(

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+#include "helpers/setup_helpers.h"
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/effects/status_effects.h"
 #include "tty_invaders/entities/entity_type.h"
@@ -18,36 +19,6 @@
 namespace tty_invaders::entities {
 class InvaderTest : public ::testing::Test {
 protected:
-  inline rendering::TermDims term_dims(
-    const std::size_t main_height, const std::size_t bar_height, const std::size_t width
-  ) const {
-    rendering::TermDims td;
-    td.main_height = main_height;
-    td.bar_height = bar_height;
-    td.width = width;
-    return td;
-  }
-
-  inline gameplay::CollisionBuffer collision_buffer(
-    const rendering::TermDims& td
-  ) const {
-    gameplay::CollisionBuffer cb {
-      .front_types {std::vector<EntityType>(
-        static_cast<std::size_t>(td.main_height * td.width),
-        EntityType::None
-      )},
-      .back_types {std::vector<EntityType>(
-        static_cast<std::size_t>(td.main_height * td.width),
-        EntityType::None
-      )},
-      .back_ids {
-        std::vector<std::size_t>(static_cast<std::size_t>(td.main_height * td.width), 0)
-      }
-    };
-
-    return cb;
-  }
-
   Invaders invaders {
     {&templates::destroyer, &templates::fighter, &templates::speeder},
     {&templates::bullet, &templates::bullet, &templates::rocket},
@@ -66,8 +37,8 @@ protected:
 
 // NOTE: This test doesn't account for invader movement yet
 TEST_F(InvaderTest, TestInvaderHitboxesAddedToCollisionBuffer) {
-  rendering::TermDims td {term_dims(24, 1, 80)};
-  gameplay::CollisionBuffer cb {collision_buffer(td)};
+  rendering::TermDims td {tests::helpers::term_dims(1, 50, 80)};
+  gameplay::CollisionBuffer cb {td};
   invaders.update(cb, projectiles, td);
 
   std::vector<std::size_t> expected_cb_idxs;
@@ -113,8 +84,8 @@ TEST_F(InvaderTest, TestInvaderHitboxesAddedToCollisionBuffer) {
 }
 
 TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
-  rendering::TermDims td {term_dims(24, 1, 80)};
-  gameplay::CollisionBuffer cb {collision_buffer(td)};
+  rendering::TermDims td {tests::helpers::term_dims(24, 1, 80)};
+  gameplay::CollisionBuffer cb {td};
   invaders.update(cb, projectiles, td);
 
   std::vector<int> expected_xs {

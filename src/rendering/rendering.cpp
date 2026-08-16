@@ -14,7 +14,7 @@
 
 namespace tty_invaders::rendering {
 void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
-  geometry::RectCoords min_rect {dirty_area(cb)};
+  geometry::RectCoords min_rect {dirty_area(cb, td)};
   if (min_rect.empty()) {
     return;
   }
@@ -63,14 +63,13 @@ void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
   }
 }
 
-// TODO: Write test
 geometry::RectCoords dirty_area(
   const gameplay::CollisionBuffer& cb, const TermDims& bounds
 ) {
   geometry::RectCoords dirty_area {};
   bool first {true};
 
-  for (std::size_t y {0}; y < cb.back_types.size(); ++y) {
+  for (std::size_t y {0}; y < bounds.main_height; ++y) {
     for (std::size_t x {0}; x < bounds.width; ++x) {
       std::size_t cb_idx {y * bounds.width + x};
       if (cb.back_types[cb_idx] == cb.front_types[cb_idx]) {
@@ -88,8 +87,8 @@ geometry::RectCoords dirty_area(
 
       dirty_area.tl_x = std::min(x, dirty_area.tl_x);
       dirty_area.tl_y = std::min(y, dirty_area.tl_y);
-      dirty_area.br_x = std::max(x, dirty_area.br_x);
-      dirty_area.br_y = std::max(y, dirty_area.br_y);
+      dirty_area.br_x = std::max(x + 1, dirty_area.br_x);
+      dirty_area.br_y = std::max(y + 1, dirty_area.br_y);
     }
   }
 

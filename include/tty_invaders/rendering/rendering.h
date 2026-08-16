@@ -14,7 +14,7 @@ void render(
   const gameplay::CollisionBuffer&, const geometry::RectCoords&, const TermDims&
 );
 // Determines the minimal area that needs to be touched to blit as little as possible
-geometry::RectCoords dirty_area(const gameplay::CollisionBuffer&);
+geometry::RectCoords dirty_area(const gameplay::CollisionBuffer&, const TermDims&);
 } // namespace tty_invaders::rendering
 
 #endif // TTY_INVADERS_RENDERING_RENDERING_H
