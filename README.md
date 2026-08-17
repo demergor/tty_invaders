@@ -1,5 +1,6 @@
 ## Work In Progress:
-- implement entities' update methods (currently working on defender, projectiles still missing)
+- implement entities' update methods (projectiles still missing)
+- write some tests for Defender's update method and CollisionBuffer::area_contains
 
 ## Future: 
 - add power ups

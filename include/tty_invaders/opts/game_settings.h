@@ -12,6 +12,7 @@ constexpr char left {'a'};
 constexpr int defender_lives {3};
 constexpr int defender_armor {100};
 constexpr int defender_atk_freq {10};
+constexpr int defender_atk_dmg {100};
 
 constexpr int invader_level_seed {0};
 constexpr int invader_atk_freq {25};

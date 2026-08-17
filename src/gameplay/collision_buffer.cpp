@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::gameplay {
@@ -27,6 +28,24 @@ CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
       "Terminal dimension area is empty!"
     );
   }
+}
+
+// TODO: Write test
+bool CollisionBuffer::area_contains(
+  const geometry::RectCoords& area,
+  entities::EntityType type,
+  const rendering::TermDims& bounds
+) const {
+  for (std::size_t y_offset {area.tl_y * bounds.width}; y_offset < area.br_y;
+       y_offset += bounds.width) {
+    for (std::size_t x {area.tl_x}; x < area.br_x; ++x) {
+      if ((front_types[y_offset + x] & type) != entities::EntityType::None) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 void CollisionBuffer::clear_back() {
