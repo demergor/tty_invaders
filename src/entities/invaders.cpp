@@ -78,7 +78,19 @@ void Invaders::update(
   Projectiles& projectiles,
   const rendering::TermDims& bounds
 ) {
-  // TODO: Add Invader movement
+  move(bounds);
+  populate_collision_buffer(cb, bounds);
+  populate_projectiles(projectiles);
+}
+
+// TODO: Implement
+void Invaders::move(const rendering::TermDims& bounds) {
+  return;
+}
+
+void Invaders::populate_collision_buffer(
+  gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
+) const {
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     for (const auto& [x_offset, y_offset] : ship_bodies[i]->hitbox_pos) {
       int hitbox_x {tl_xs[i] + x_offset};
@@ -100,7 +112,9 @@ void Invaders::update(
       cb.back_ids[cb_idx] = i;
     }
   }
+}
 
+void Invaders::populate_projectiles(Projectiles& projectiles) const {
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     for (const auto& idx : ship_bodies[i]->cannon_pos) {
       projectiles.add(

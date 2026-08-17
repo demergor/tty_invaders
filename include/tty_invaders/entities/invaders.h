@@ -12,7 +12,7 @@
 
 namespace tty_invaders::entities {
 struct Invaders {
-  // TODO: Maybe add a constructor that takes a seed and generate its own invaders
+  // TODO: Maybe add a constructor that takes a seed and generates its own invaders
   explicit Invaders(
     const std::vector<const templates::ShipBody*>& ship_bodies,
     const std::vector<const templates::ProjectileBody*>& projectile_bodies,
@@ -39,6 +39,13 @@ struct Invaders {
   std::vector<int> refracts;
   std::vector<int> atk_spds;
   std::vector<effects::StatusEffect> effects;
+
+private:
+  void move(const rendering::TermDims&);
+  void populate_collision_buffer(
+    gameplay::CollisionBuffer&, const rendering::TermDims&
+  ) const;
+  void populate_projectiles(Projectiles&) const;
 };
 } // namespace tty_invaders::entities
 
