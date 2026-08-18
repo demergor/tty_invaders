@@ -103,8 +103,8 @@ void Defender::populate_coll_buf(
       continue;
     }
 
-    std::size_t grid_x {static_cast<std::size_t>(hitbox_x)};
-    std::size_t grid_y {static_cast<std::size_t>(hitbox_y)};
+    const auto grid_x {static_cast<std::size_t>(hitbox_x)};
+    const auto grid_y {static_cast<std::size_t>(hitbox_y)};
 
     if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
       continue;

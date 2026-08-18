@@ -1,6 +1,7 @@
 #ifndef TTY_INVADERS_ENTITIES_PROJECTILES_H
 #define TTY_INVADERS_ENTITIES_PROJECTILES_H
 
+#include <cstddef>
 #include <vector>
 
 #include "tty_invaders/effects/collision_effect.h"
@@ -11,7 +12,7 @@
 
 namespace tty_invaders::entities {
 struct Projectiles {
-  void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims);
+  void update(gameplay::CollisionBuffer&, const rendering::TermDims&);
   void add(
     const int tl_x,
     const int tl_y,
@@ -21,6 +22,7 @@ struct Projectiles {
     const EntityType& owner,
     const effects::CollisionEffect& effect
   );
+  void remove(const std::size_t id);
   void clear();
 
   std::vector<int> xs;
@@ -30,6 +32,10 @@ struct Projectiles {
   std::vector<const templates::ProjectileBody*> bodies;
   std::vector<EntityType> owners;
   std::vector<effects::CollisionEffect> effects;
+
+  private:
+  void move(const rendering::TermDims&);
+  void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&);
 };
 } // namespace tty_invaders::entities
 

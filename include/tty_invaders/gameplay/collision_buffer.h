@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/geometry/point.h"
 #include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
 
@@ -15,6 +16,12 @@ struct CollisionBuffer {
   bool area_contains(
     const geometry::RectCoords&, entities::EntityType, const rendering::TermDims&
   ) const;
+  bool area_contains_only(
+    const std::size_t idx,
+    const std::vector<geometry::Point>& offsets,
+    entities::EntityType type,
+    const rendering::TermDims& bounds
+  );
   void clear_back();
 
   std::vector<entities::EntityType> front_types;

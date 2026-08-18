@@ -38,13 +38,41 @@ bool CollisionBuffer::area_contains(
   for (std::size_t y_offset {area.tl_y * bounds.width}; y_offset < area.br_y;
        y_offset += bounds.width) {
     for (std::size_t x {area.tl_x}; x < area.br_x; ++x) {
-      if ((front_types[y_offset + x] & type) != entities::EntityType::None) {
+      if (entities::is_subset(type, front_types[y_offset + x])) {
         return true;
       }
     }
   }
 
   return false;
+}
+
+bool CollisionBuffer::area_contains_only(
+  const std::size_t idx,
+  const std::vector<geometry::Point>& offsets,
+  entities::EntityType type,
+  const rendering::TermDims& bounds
+) {
+  const auto width {static_cast<int>(bounds.width)};
+  const auto buf_offset {static_cast<int>(idx)};
+
+  for (const auto& [x_offset, y_offset] : offsets) {
+    const int offset_idx {buf_offset + x_offset + y_offset * width};
+    if (offset_idx < 0) {
+      continue;
+    }
+
+    const auto offset_buf_idx {static_cast<std::size_t>(offset_idx)};
+    if (offset_buf_idx >= back_types.size()) {
+      continue;
+    }
+
+    if (!is_subset(back_types[offset_buf_idx], type)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void CollisionBuffer::clear_back() {
