@@ -1,6 +1,10 @@
 #ifndef TTY_INVADERS_OPTS_GAME_SETTINGS_H
 #define TTY_INVADERS_OPTS_GAME_SETTINGS_H
 
+#include <array>
+
+#include "tty_invaders/entities/entity_type.h"
+
 namespace tty_invaders::opts::game_settings {
 namespace movement {
 constexpr char up {'w'};
@@ -21,6 +25,17 @@ constexpr int invader_atk_dmg {25};
 constexpr int defender_mov_spd {1};
 
 constexpr int action_bar_height {1};
+
+constexpr std::array entity_type_priority {
+  entities::EntityType::PowerUp,
+  entities::EntityType::Explosion,
+  entities::EntityType::InvaderBoss,
+  entities::EntityType::Defender,
+  entities::EntityType::Invader,
+  entities::EntityType::InvaderBullet,
+  entities::EntityType::DefenderBullet,
+  entities::EntityType::None,
+};
 } // namespace tty_invaders::opts::game_settings
 
 #endif // TTY_INVADERS_OPTS_GAME_SETTINGS_H

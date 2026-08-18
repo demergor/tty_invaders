@@ -27,34 +27,7 @@ void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
   Formatting prev {Formatting::None};
   for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y; ++y) {
     for (std::size_t x {min_rect.tl_x}; x < min_rect.br_x; ++x) {
-      RenderAttr ra;
-      switch (cb.back_types[y * td.width + x]) {
-        case entities::EntityType::Defender:
-          ra.formatting = Formatting::Bold | Formatting::BrightGreen;
-          ra.ch = 'D';
-          break;
-        case entities::EntityType::DefenderBullet:
-          ra.formatting = Formatting::Green;
-          ra.ch = 'o';
-          break;
-        case entities::EntityType::Invader:
-          ra.formatting = Formatting::None;
-          ra.ch = 'V';
-          break;
-        case entities::EntityType::InvaderBullet:
-          ra.formatting = Formatting::BrightRed | Formatting::Bold;
-          ra.ch = 'o';
-          break;
-        case entities::EntityType::PowerUp:
-          ra.formatting = Formatting::Blue;
-          ra.ch = 'P';
-          break;
-        default:
-          ra.formatting = Formatting::None;
-          ra.ch = ' ';
-          break;
-      }
-
+      RenderAttr ra {dominant_type(cb.back_types[y * td.width + x])};
       result += ansi_escape(prev, ra.formatting);
       result += ra.ch;
     }

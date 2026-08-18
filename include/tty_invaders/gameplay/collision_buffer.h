@@ -5,28 +5,43 @@
 #include <vector>
 
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/geometry/point.h"
 #include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+struct Defender;
+struct Invaders;
+struct Projectiles;
+} // namespace tty_invaders::entities
 
 namespace tty_invaders::gameplay {
 struct CollisionBuffer {
   explicit CollisionBuffer(const rendering::TermDims&);
 
+  void dispatch_collisions(CollisionHandler&, const entities::Projectiles&) const;
   bool area_contains(
-    const geometry::RectCoords&, entities::EntityType, const rendering::TermDims&
+    const geometry::RectCoords& area,
+    entities::EntityType type,
+    const bool front,
+    const rendering::TermDims& bounds
   ) const;
-  bool area_contains_only(
+  bool area_contains(
     const std::size_t idx,
     const std::vector<geometry::Point>& offsets,
     entities::EntityType type,
+    const bool front,
     const rendering::TermDims& bounds
-  );
+  ) const;
   void clear_back();
 
   std::vector<entities::EntityType> front_types;
   std::vector<entities::EntityType> back_types;
-  std::vector<std::size_t> back_ids;
+  std::vector<std::size_t> ship_ids;
+  std::vector<std::size_t> invader_bullet_ids;
+  std::vector<std::size_t> defender_bullet_ids;
+  std::vector<std::size_t> power_up_ids;
 };
 } // namespace tty_invaders::gameplay
 

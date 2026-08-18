@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <stdexcept>
+#include <utility>
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/entities/entity_type.h"
@@ -46,6 +47,7 @@ void Defender::move(
       case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
       case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
       case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
+      default: std::unreachable();
     }
   } else {
     switch (kp.ch) {
@@ -53,6 +55,7 @@ void Defender::move(
       case opts::game_settings::movement::down: y_vel = 1; break;
       case opts::game_settings::movement::right: x_vel = 1; break;
       case opts::game_settings::movement::left: x_vel = -1; break;
+      default: return;
     }
   }
 
@@ -75,59 +78,63 @@ void Defender::move(
     return;
   }
 
-  if (cb.area_contains(bounding_box, EntityType::Invader, bounds)) {
-    return;
-  }
-
-  tl_x += x_vel;
-  tl_y += y_vel;
-}
-
-void Defender::update(
-  gameplay::CollisionBuffer& cb,
-  Projectiles& projectiles,
-  const rendering::TermDims& bounds
-) {
-  populate_coll_buf(cb, bounds);
-  populate_projectiles(projectiles);
-}
-
-void Defender::populate_coll_buf(
-  gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
-) const {
-  for (const auto& [x_offset, y_offset] : body->hitbox_pos) {
-    int hitbox_x {tl_x + x_offset};
-    int hitbox_y {tl_y + y_offset};
-
-    if (hitbox_x < 0 || hitbox_y < 0) {
-      continue;
+  std::size_t cb_idx {bounds.width * bounding_box.tl_y + bounding_box.tl_x};
+    if (cb.area_contains(cb_idx, body->hitbox_pos, EntityType::Invader, true, bounds)) {
+      return;
     }
 
-    const auto grid_x {static_cast<std::size_t>(hitbox_x)};
-    const auto grid_y {static_cast<std::size_t>(hitbox_y)};
-
-    if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
-      continue;
-    }
-
-    cb.back_types[grid_y * bounds.width + grid_x] = EntityType::Defender;
+    tl_x += x_vel;
+    tl_y += y_vel;
   }
-}
 
-void Defender::populate_projectiles(Projectiles& projectiles) const {
-  for (const auto& idx : body->cannon_pos) {
-    projectiles.add(
-      body->hitbox_pos[idx].x,
-      body->hitbox_pos[idx].y,
-      0,
-      -1,
-      &templates::bullet,
-      EntityType::Defender,
-      effects::CollisionEffect {
-        .type = effects::CollisionEffect::Effect::Dmg,
-        .val = opts::game_settings::defender_atk_dmg
+  void Defender::update(
+    gameplay::CollisionBuffer & cb,
+    Projectiles & projectiles,
+    const rendering::TermDims& bounds
+  ) {
+    populate_coll_buf(cb, bounds);
+    populate_projectiles(projectiles);
+  }
+
+  void Defender::populate_coll_buf(
+    gameplay::CollisionBuffer & cb,
+    const rendering::TermDims& bounds
+  ) const {
+    for (const auto& [x_offset, y_offset] : body->hitbox_pos) {
+      int hitbox_x {tl_x + x_offset};
+      int hitbox_y {tl_y + y_offset};
+
+      if (hitbox_x < 0 || hitbox_y < 0) {
+        continue;
       }
-    );
+
+      const auto grid_x {static_cast<std::size_t>(hitbox_x)};
+      const auto grid_y {static_cast<std::size_t>(hitbox_y)};
+
+      if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
+        continue;
+      }
+
+      const std::size_t cb_idx {grid_y * bounds.width + grid_x};
+      cb.back_types[cb_idx] = EntityType::Defender;
+      cb.ship_ids[cb_idx] = 0;
+    }
   }
-}
+
+  void Defender::populate_projectiles(Projectiles & projectiles) const {
+    for (const auto& idx : body->cannon_pos) {
+      projectiles.add(
+        body->hitbox_pos[idx].x,
+        body->hitbox_pos[idx].y,
+        0,
+        -1,
+        &templates::bullet,
+        EntityType::DefenderBullet,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Dmg,
+          .val = opts::game_settings::defender_atk_dmg
+        }
+      );
+    }
+  }
 } // namespace tty_invaders::entities

@@ -109,7 +109,7 @@ void Invaders::populate_collision_buffer(
 
       std::size_t cb_idx {grid_y * bounds.width + grid_x};
       cb.back_types[cb_idx] = EntityType::Invader;
-      cb.back_ids[cb_idx] = i;
+      cb.ship_ids[cb_idx] = i;
     }
   }
 }
@@ -123,7 +123,7 @@ void Invaders::populate_projectiles(Projectiles& projectiles) const {
         0,
         1,
         projectile_bodies[i],
-        EntityType::Invader,
+        EntityType::InvaderBullet,
         effects::CollisionEffect {
           .type = effects::CollisionEffect::Effect::Dmg,
           .val = opts::game_settings::invader_atk_dmg

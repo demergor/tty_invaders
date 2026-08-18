@@ -1,6 +1,5 @@
 ## Work In Progress:
-- implement entities' update methods (projectiles still missing a bit)
-- expand CollisionBuffer logic
+- implement entity's collision handling (implement CollisionHandler)
 
 ## Future: 
 - add power ups

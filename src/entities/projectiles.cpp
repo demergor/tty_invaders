@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <stdexcept>
+#include <utility>
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/entities/entity_type.h"
@@ -22,7 +23,7 @@ void Projectiles::add(
   const int x_vel,
   const int y_vel,
   const templates::ProjectileBody* body,
-  const EntityType& owner,
+  const EntityType& type,
   const effects::CollisionEffect& effect
 ) {
   xs.emplace_back(x);
@@ -30,7 +31,7 @@ void Projectiles::add(
   x_vels.emplace_back(x_vel);
   y_vels.emplace_back(y_vel);
   bodies.emplace_back(body);
-  owners.emplace_back(owner);
+  types.emplace_back(type);
   effects.emplace_back(effect);
 }
 
@@ -40,7 +41,7 @@ void Projectiles::clear() {
   x_vels.clear();
   y_vels.clear();
   bodies.clear();
-  owners.clear();
+  types.clear();
   effects.clear();
 }
 
@@ -89,8 +90,8 @@ void Projectiles::remove(const std::size_t idx) {
   bodies[idx] = bodies.back();
   bodies.pop_back();
 
-  owners[idx] = owners.back();
-  owners.pop_back();
+  types[idx] = types.back();
+  types.pop_back();
 
   effects[idx] = effects.back();
   effects.pop_back();
@@ -103,17 +104,20 @@ void Projectiles::populate_coll_buf(
     const auto grid_x {static_cast<std::size_t>(xs[i])};
     const auto grid_y {static_cast<std::size_t>(ys[i])};
     std::size_t cb_idx {grid_y * bounds.width + grid_x};
+    cb.back_types[cb_idx] &= types[i];
 
-    if (cb.area_contains_only(cb_idx, bodies[i]->points, EntityType::None, bounds)) {
-      cb.back_types[cb_idx] = owners[i];
-      cb.back_ids[cb_idx] = i;
-      continue;
+    switch (types[i]) {
+      case EntityType::DefenderBullet:
+        cb.defender_bullet_ids[cb_idx] = i;
+        break;
+      case EntityType::InvaderBullet:
+        cb.invader_bullet_ids[cb_idx] = i;
+        break;
+      case EntityType::PowerUp:
+        cb.power_up_ids[cb_idx] = i;
+        break;
+      default: std::unreachable();
     }
-
-    // TODO: Decide whether to store more stuff (like std::vector<std::size_t>
-    // projectile_ids) in CollisionBuffer to outsource collision logic into collision
-    // buffer
-    // TODO: Implement impact handling
   }
 }
 } // namespace tty_invaders::entities

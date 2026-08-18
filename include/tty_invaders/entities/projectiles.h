@@ -30,10 +30,10 @@ struct Projectiles {
   std::vector<int> x_vels;
   std::vector<int> y_vels;
   std::vector<const templates::ProjectileBody*> bodies;
-  std::vector<EntityType> owners;
+  std::vector<EntityType> types;
   std::vector<effects::CollisionEffect> effects;
 
-  private:
+private:
   void move(const rendering::TermDims&);
   void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&);
 };

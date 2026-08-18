@@ -75,11 +75,12 @@ TEST_F(InvaderTest, TestInvaderHitboxesAddedToCollisionBuffer) {
   }
 
   ASSERT_EQ(cb.front_types.size(), cb.back_types.size());
-  ASSERT_EQ(cb.front_types.size(), cb.back_ids.size());
+  ASSERT_EQ(cb.front_types.size(), cb.ship_ids.size());
+  ASSERT_EQ(cb.front_types.size(), cb.invader_bullet_ids.size());
 
   for (std::size_t i {0}; i < expected_cb_idxs.size(); ++i) {
     ASSERT_EQ(cb.back_types[expected_cb_idxs[i]], expected_entity_type);
-    ASSERT_EQ(cb.back_ids[expected_cb_idxs[i]], expected_ids[i]);
+    ASSERT_EQ(cb.ship_ids[expected_cb_idxs[i]], expected_ids[i]);
   }
 }
 
@@ -151,9 +152,9 @@ TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
 
   ASSERT_TRUE(
     std::all_of(
-      projectiles.owners.begin(),
-      projectiles.owners.end(),
-      [](const EntityType val) { return val == EntityType::Invader; }
+      projectiles.types.begin(),
+      projectiles.types.end(),
+      [](const EntityType val) { return val == EntityType::InvaderBullet; }
     )
   );
 

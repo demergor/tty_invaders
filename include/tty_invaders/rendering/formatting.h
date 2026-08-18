@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "tty_invaders/io/term.h"
+#include "tty_invaders/utility/mask.h"
 
 namespace tty_invaders::rendering {
 enum class Formatting : uint32_t {
@@ -58,43 +59,39 @@ constexpr std::array formatting_codes {
   std::pair {Formatting::BgBlue, io::term::bg_blue},
 };
 
-inline constexpr bool operator==(Formatting lop, Formatting rop) {
+constexpr bool operator==(Formatting lop, Formatting rop) {
   return std::to_underlying(lop) == std::to_underlying(rop);
 }
 
-inline constexpr bool operator!=(Formatting lop, Formatting rop) {
+constexpr bool operator!=(Formatting lop, Formatting rop) {
   return !(lop == rop);
 }
 
-inline constexpr Formatting operator|(Formatting lop, Formatting rop) {
+constexpr Formatting operator|(Formatting lop, Formatting rop) {
   return static_cast<Formatting>(std::to_underlying(lop) | std::to_underlying(rop));
 }
 
-inline constexpr Formatting operator&(Formatting lop, Formatting rop) {
+constexpr Formatting operator&(Formatting lop, Formatting rop) {
   return static_cast<Formatting>(std::to_underlying(lop) & std::to_underlying(rop));
 }
 
-inline constexpr Formatting operator^(Formatting lop, Formatting rop) {
+constexpr Formatting operator^(Formatting lop, Formatting rop) {
   return static_cast<Formatting>(std::to_underlying(lop) ^ std::to_underlying(rop));
 }
 
-inline constexpr Formatting& operator|=(Formatting& lop, Formatting rop) {
+constexpr Formatting& operator|=(Formatting& lop, Formatting rop) {
   return lop = lop | rop;
 }
 
-inline constexpr Formatting& operator&=(Formatting& lop, Formatting rop) {
+constexpr Formatting& operator&=(Formatting& lop, Formatting rop) {
   return lop = lop & rop;
 }
 
-inline constexpr Formatting& operator^=(Formatting& lop, Formatting rop) {
+constexpr Formatting& operator^=(Formatting& lop, Formatting rop) {
   return lop = lop ^ rop;
 }
 
-inline constexpr bool is_subset(Formatting subset, Formatting superset) {
-  return (superset & subset) == subset;
-}
-
-inline constexpr std::string to_string(Formatting formatting) {
+constexpr std::string to_string(Formatting formatting) {
   if (formatting == Formatting::None) {
     return "";
   }
@@ -107,9 +104,9 @@ inline constexpr std::string to_string(Formatting formatting) {
   return result;
 }
 
-inline std::string ansi_escape(const Formatting& prev, const Formatting& cur) {
+constexpr std::string ansi_escape(const Formatting& prev, const Formatting& cur) {
   std::string result;
-  if (!is_subset(prev, cur)) {
+  if (!utility::mask::is_subset(prev, cur)) {
     result = io::term::reset;
     return result + to_string(cur);
   }
