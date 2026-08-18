@@ -103,6 +103,8 @@ add_executable(
   tty_invaders_tests
   tests/test_main.cpp
   tests/entities/invaders_tests.cpp
+  tests/gameplay/collision_buffer_tests.cpp
+  tests/rendering/formatting_tests.cpp
   tests/rendering/rendering_tests.cpp
 )
 

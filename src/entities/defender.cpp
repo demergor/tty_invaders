@@ -92,7 +92,6 @@ void Defender::update(
   populate_projectiles(projectiles);
 }
 
-// TODO: Write tests
 void Defender::populate_coll_buf(
   gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
 ) const {
@@ -115,7 +114,6 @@ void Defender::populate_coll_buf(
   }
 }
 
-// TODO: Write tests
 void Defender::populate_projectiles(Projectiles& projectiles) const {
   for (const auto& idx : body->cannon_pos) {
     projectiles.add(

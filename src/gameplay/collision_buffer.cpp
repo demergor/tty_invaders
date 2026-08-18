@@ -30,7 +30,6 @@ CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
   }
 }
 
-// TODO: Write test
 bool CollisionBuffer::area_contains(
   const geometry::RectCoords& area,
   entities::EntityType type,

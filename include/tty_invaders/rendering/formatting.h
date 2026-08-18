@@ -91,16 +91,7 @@ inline constexpr Formatting& operator^=(Formatting& lop, Formatting rop) {
 }
 
 inline constexpr bool is_subset(Formatting subset, Formatting superset) {
-  for (const auto& [formatting, code] : formatting_codes) {
-    if (
-      (subset & formatting) != Formatting::None
-      && (superset & formatting) == Formatting::None
-    ) {
-      return false;
-    }
-  }
-
-  return true;
+  return (superset & subset) == subset;
 }
 
 inline constexpr std::string to_string(Formatting formatting) {
@@ -118,7 +109,7 @@ inline constexpr std::string to_string(Formatting formatting) {
 
 inline std::string ansi_escape(const Formatting& prev, const Formatting& cur) {
   std::string result;
-  if (!is_subset(cur, prev)) {
+  if (!is_subset(prev, cur)) {
     result = io::term::reset;
     return result + to_string(cur);
   }

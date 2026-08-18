@@ -9,6 +9,10 @@ enum class EntityType : std::uint8_t {
   None, Defender, DefenderBullet, Invader, InvaderBullet, PowerUp
 };
 
+inline constexpr EntityType operator|(const EntityType& lop, const EntityType& rop) {
+  return static_cast<EntityType>(std::to_underlying(lop) | std::to_underlying(rop));
+}
+
 inline constexpr EntityType operator&(const EntityType& lop, const EntityType& rop) {
   return static_cast<EntityType>(std::to_underlying(lop) & std::to_underlying(rop));
 }
