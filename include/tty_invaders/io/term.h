@@ -46,11 +46,12 @@ inline constexpr std::string_view bg_yellow {"\033[43m"};
 inline constexpr std::string_view bg_blue {"\033[44m"};
 
 inline void move_cursor(
-  std::string& out_buf, const std::size_t x, const std::size_t y
+  std::string& out_buf,
+  const std::size_t x,
+  const std::size_t y
 ) {
   std::format_to(std::back_inserter(out_buf), "\033[{};{}H", y + 1, x + 1);
 }
 } // namespace tty_invaders::io::term
 
 #endif // TTY_INVADERS_IO_TERM_H
-

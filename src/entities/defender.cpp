@@ -19,7 +19,7 @@
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::entities {
-Defender::Defender(templates::ShipBody* body, const int armor, const int lives)
+Defender::Defender(const templates::ShipBody* body, const int armor, const int lives)
     : body {body}
     , armor {armor}
     , lives {lives} {

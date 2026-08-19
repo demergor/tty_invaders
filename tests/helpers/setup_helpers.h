@@ -8,7 +8,9 @@
 
 namespace tty_invaders::tests::helpers {
 inline rendering::TermDims term_dims(
-  const std::size_t bar_height, const std::size_t main_height, const std::size_t width
+  const std::size_t bar_height,
+  const std::size_t main_height,
+  const std::size_t width
 ) {
   rendering::TermDims td;
   td.main_height = main_height;
@@ -18,7 +20,8 @@ inline rendering::TermDims term_dims(
 }
 
 inline gameplay::CollisionBuffer collision_buffer(
-  const std::size_t height, const std::size_t width
+  const std::size_t height,
+  const std::size_t width
 ) {
   rendering::TermDims td;
   td.main_height = height;

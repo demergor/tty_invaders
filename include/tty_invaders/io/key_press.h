@@ -5,7 +5,11 @@
 
 namespace tty_invaders::io {
 struct KeyPress {
-  enum class Type { None, Char, Arrow };
+  enum class Type {
+    None,
+    Char,
+    Arrow
+  };
 
   bool operator==(const KeyPress&);
 

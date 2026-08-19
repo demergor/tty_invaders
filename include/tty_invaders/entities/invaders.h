@@ -39,7 +39,8 @@ struct Invaders {
 private:
   void move(const rendering::TermDims&);
   void populate_collision_buffer(
-    gameplay::CollisionBuffer&, const rendering::TermDims&
+    gameplay::CollisionBuffer&,
+    const rendering::TermDims&
   ) const;
   void populate_projectiles(Projectiles&) const;
   void remove(const std::size_t idx);

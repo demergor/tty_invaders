@@ -5,10 +5,10 @@
 
 namespace tty_invaders::io::ctrls {
 enum class ArrowDirection : uint16_t {
-  Up = 1000,
-  Down = 1001,
-  Right = 1002,
-  Left = 1003,
+  Up = 1'000,
+  Down = 1'001,
+  Right = 1'002,
+  Left = 1'003,
 };
 } // namespace tty_invaders::io::ctrls
 #endif // TTY_INVADERS_IO_CTRLS_ARROW_DIRECTION_H

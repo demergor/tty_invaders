@@ -12,15 +12,17 @@
 
 namespace tty_invaders::entities {
 struct Defender {
-  explicit Defender(templates::ShipBody* body, const int armor, const int lives);
+  explicit Defender(const templates::ShipBody* body, const int armor, const int lives);
 
   void move(
-    const io::KeyPress&, const gameplay::CollisionBuffer&, const rendering::TermDims&
+    const io::KeyPress&,
+    const gameplay::CollisionBuffer&,
+    const rendering::TermDims&
   );
   void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims&);
   void cleanup(std::chrono::milliseconds);
 
-  templates::ShipBody* body;
+  const templates::ShipBody* body;
   int tl_x;
   int tl_y;
   int armor;

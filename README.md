@@ -1,7 +1,7 @@
 ## Work In Progress:
+- write main loop
 - implement action bar rendering
 - add power ups in-game
-- write main loop
 
 ## Future: 
 - add levels

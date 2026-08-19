@@ -5,24 +5,32 @@
 
 namespace tty_invaders::effects {
 struct CollisionEffect {
-  enum class Effect { Damage, Heal, Armor, PowerUp } type;
+  enum class Effect {
+    Damage,
+    Heal,
+    Armor,
+    PowerUp
+  } type;
   int val;
 };
 
 inline constexpr bool operator==(
-  CollisionEffect::Effect lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
 ) {
   return std::to_underlying(lop) == std::to_underlying(rop);
 }
 
 inline constexpr bool operator!=(
-  CollisionEffect::Effect lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
 ) {
   return !(lop == rop);
 }
 
 inline constexpr CollisionEffect::Effect operator|(
-  CollisionEffect::Effect lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
 ) {
   return static_cast<CollisionEffect::Effect>(
     std::to_underlying(lop) | std::to_underlying(rop)
@@ -30,7 +38,8 @@ inline constexpr CollisionEffect::Effect operator|(
 }
 
 inline constexpr CollisionEffect::Effect operator&(
-  CollisionEffect::Effect lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
 ) {
   return static_cast<CollisionEffect::Effect>(
     std::to_underlying(lop) & std::to_underlying(rop)
@@ -38,7 +47,8 @@ inline constexpr CollisionEffect::Effect operator&(
 }
 
 inline constexpr CollisionEffect::Effect operator^(
-  CollisionEffect::Effect lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
 ) {
   return static_cast<CollisionEffect::Effect>(
     std::to_underlying(lop) ^ std::to_underlying(rop)
@@ -46,19 +56,22 @@ inline constexpr CollisionEffect::Effect operator^(
 }
 
 inline constexpr CollisionEffect::Effect& operator|=(
-  CollisionEffect::Effect& lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect& lop,
+  CollisionEffect::Effect rop
 ) {
   return lop = lop | rop;
 }
 
 inline constexpr CollisionEffect::Effect& operator&=(
-  CollisionEffect::Effect& lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect& lop,
+  CollisionEffect::Effect rop
 ) {
   return lop = lop & rop;
 }
 
 inline constexpr CollisionEffect::Effect& operator^=(
-  CollisionEffect::Effect& lop, CollisionEffect::Effect rop
+  CollisionEffect::Effect& lop,
+  CollisionEffect::Effect rop
 ) {
   return lop = lop ^ rop;
 }

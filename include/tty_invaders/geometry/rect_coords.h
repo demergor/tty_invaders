@@ -12,6 +12,6 @@ struct RectCoords {
   std::size_t br_x {0};
   std::size_t br_y {0};
 };
-}
+} // namespace tty_invaders::geometry
 
 #endif // TTY_INVADERS_GEOMETRY_RECT_COORDS_H

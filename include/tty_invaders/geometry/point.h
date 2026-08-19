@@ -6,6 +6,6 @@ struct Point {
   int x {0};
   int y {0};
 };
-}
+} // namespace tty_invaders::geometry
 
 #endif // TTY_INVADERS_GEOMETRY_POINT_H
