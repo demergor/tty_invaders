@@ -29,7 +29,6 @@ Invaders::Invaders(
     , tl_xs {tl_xs}
     , tl_ys {tl_ys}
     , armor {armor}
-    , lives {lives}
     , atk_spds {atk_spds}
     , effects {effects} {
   if (tl_xs.size() != tl_ys.size()) {
@@ -61,16 +60,6 @@ Invaders::Invaders(
       "Error initializing invaders: Lives-vector contains values < 1!"
     );
   }
-
-  br_xs.reserve(tl_xs.size());
-  for (std::size_t i {0}; i < tl_xs.size(); ++i) {
-    br_xs.emplace_back(tl_xs[i] + ship_bodies[i]->br_x);
-  }
-
-  br_ys.reserve(tl_ys.size());
-  for (std::size_t i {0}; i < tl_ys.size(); ++i) {
-    br_ys.emplace_back(tl_ys[i] + ship_bodies[i]->br_y);
-  }
 }
 
 void Invaders::update(
@@ -83,10 +72,19 @@ void Invaders::update(
   populate_projectiles(projectiles);
 }
 
-// TODO: Implement
-void Invaders::move(const rendering::TermDims& bounds) {
-  return;
+void Invaders::cleanup() {
+  std::size_t idx {0};
+  while (idx < armor.size()) {
+    if (armor[idx] <= 0) {
+      remove(idx);
+    } else {
+      ++idx;
+    }
+  }
 }
+
+// TODO: Implement
+void Invaders::move(const rendering::TermDims& bounds) { return; }
 
 void Invaders::populate_collision_buffer(
   gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
@@ -125,11 +123,44 @@ void Invaders::populate_projectiles(Projectiles& projectiles) const {
         projectile_bodies[i],
         EntityType::InvaderBullet,
         effects::CollisionEffect {
-          .type = effects::CollisionEffect::Effect::Dmg,
+          .type = effects::CollisionEffect::Effect::Damage,
           .val = opts::game_settings::invader_atk_dmg
         }
       );
     }
   }
+}
+
+void Invaders::remove(const std::size_t idx) {
+  if (ship_bodies.size() >= idx) {
+    throw std::runtime_error(
+      "Error removing invader: Index is out of bounds!\nIndex: " + std::to_string(idx)
+      + "\nSize: " + std::to_string(ship_bodies.size())
+    );
+  }
+
+  ship_bodies[idx] = ship_bodies.back();
+  ship_bodies.pop_back();
+
+  projectile_bodies[idx] = projectile_bodies.back();
+  projectile_bodies.pop_back();
+
+  tl_xs[idx] = tl_xs.back();
+  tl_xs.pop_back();
+
+  tl_ys[idx] = tl_ys.back();
+  tl_ys.pop_back();
+
+  armor[idx] = armor.back();
+  armor.pop_back();
+
+  refracts[idx] = refracts.back();
+  refracts.pop_back();
+
+  atk_spds[idx] = atk_spds.back();
+  atk_spds.pop_back();
+
+  effects[idx] = effects.back();
+  effects.pop_back();
 }
 } // namespace tty_invaders::entities

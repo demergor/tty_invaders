@@ -6,9 +6,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include "tty_invaders/entities/defender.h"
 #include "tty_invaders/entities/entity_type.h"
-#include "tty_invaders/entities/invaders.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/gameplay/collision_data.h"
 #include "tty_invaders/gameplay/collision_handler.h"

@@ -45,7 +45,6 @@ add_library(
   src/entities/templates/projectiles.cpp
 
   src/gameplay/collision_buffer.cpp
-  src/gameplay/collision_data.cpp
   src/gameplay/collision_handler.cpp
 
   src/geometry/rect_coords.cpp

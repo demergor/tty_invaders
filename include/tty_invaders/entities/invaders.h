@@ -25,17 +25,13 @@ struct Invaders {
   );
 
   void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims&);
+  void cleanup();
 
   std::vector<const templates::ShipBody*> ship_bodies;
   std::vector<const templates::ProjectileBody*> projectile_bodies;
   std::vector<int> tl_xs;
   std::vector<int> tl_ys;
-  std::vector<int> br_xs;
-  std::vector<int> br_ys;
-
   std::vector<int> armor;
-  std::vector<int> lives;
-
   std::vector<int> refracts;
   std::vector<int> atk_spds;
   std::vector<effects::StatusEffect> effects;
@@ -46,6 +42,7 @@ private:
     gameplay::CollisionBuffer&, const rendering::TermDims&
   ) const;
   void populate_projectiles(Projectiles&) const;
+  void remove(const std::size_t idx);
 };
 } // namespace tty_invaders::entities
 

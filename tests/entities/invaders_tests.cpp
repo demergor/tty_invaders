@@ -163,7 +163,7 @@ TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
       projectiles.effects.begin(),
       projectiles.effects.end(),
       [](const effects::CollisionEffect val) {
-        return val.type == effects::CollisionEffect::Effect::Dmg;
+        return val.type == effects::CollisionEffect::Effect::Damage;
       }
     )
   );

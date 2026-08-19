@@ -5,7 +5,7 @@
 
 namespace tty_invaders::effects {
 struct CollisionEffect {
-  enum class Effect { Dmg, Heal, Armor, PowerUp } type;
+  enum class Effect { Damage, Heal, Armor, PowerUp } type;
   int val;
 };
 

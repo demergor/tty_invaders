@@ -22,7 +22,7 @@ struct Projectiles {
     const EntityType& owner,
     const effects::CollisionEffect& effect
   );
-  void remove(const std::size_t id);
+  void remove(const std::size_t idx);
   void clear();
 
   std::vector<int> xs;

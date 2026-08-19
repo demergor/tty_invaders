@@ -5,9 +5,14 @@
 
 #include "tty_invaders/gameplay/collision_data.h"
 
+namespace tty_invaders::entities {
+struct Defender;
+struct Invaders;
+} // namespace tty_invaders::entities
+
 namespace tty_invaders::gameplay {
 struct CollisionHandler {
-  void dispatch(CollisionData);
+  void handle_collisions(entities::Defender&, entities::Invaders&);
 
   std::vector<CollisionData> collisions;
 };

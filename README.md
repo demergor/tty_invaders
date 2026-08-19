@@ -1,6 +1,9 @@
 ## Work In Progress:
-- implement entity's collision handling (implement CollisionHandler)
+- implement action bar rendering
+- add power ups in-game
+- write main loop
 
 ## Future: 
-- add power ups
-- write a main
+- add levels
+- develop pseudo-random level generation
+- add bosses

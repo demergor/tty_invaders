@@ -1,11 +1,10 @@
 #ifndef TTY_INVADERS_EFFECTS_STATUS_EFFECTS_H
 #define TTY_INVADERS_EFFECTS_STATUS_EFFECTS_H
 
-#include <cstdint>
 #include <utility>
 
 namespace tty_invaders::effects {
-enum class StatusEffect : uint8_t {
+enum class StatusEffect : int {
   None = 0u,
   DoubleAtkSpd = 1u << 0,
   DoubleDmg = 1u << 1,

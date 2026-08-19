@@ -1,6 +1,8 @@
 #ifndef TTY_INVADERS_ENTITIES_DEFENDER_H
 #define TTY_INVADERS_ENTITIES_DEFENDER_H
 
+#include <chrono>
+
 #include "tty_invaders/effects/status_effects.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/ship_body.h"
@@ -16,6 +18,7 @@ struct Defender {
     const io::KeyPress&, const gameplay::CollisionBuffer&, const rendering::TermDims&
   );
   void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims&);
+  void cleanup(std::chrono::milliseconds);
 
   templates::ShipBody* body;
   int tl_x;
@@ -25,11 +28,10 @@ struct Defender {
   int refract;
   int atk_spd;
   effects::StatusEffect effect;
+  std::chrono::milliseconds effect_duration;
 
 private:
-  void populate_coll_buf(
-    gameplay::CollisionBuffer&, const rendering::TermDims&
-  ) const;
+  void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&) const;
   void populate_projectiles(Projectiles&) const;
 };
 } // namespace tty_invaders::entities

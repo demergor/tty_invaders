@@ -2,6 +2,7 @@
 #define TTY_INVADERS_OPTS_GAME_SETTINGS_H
 
 #include <array>
+#include <chrono>
 
 #include "tty_invaders/entities/entity_type.h"
 
@@ -25,6 +26,8 @@ constexpr int invader_atk_dmg {25};
 constexpr int defender_mov_spd {1};
 
 constexpr int action_bar_height {1};
+
+constexpr std::chrono::milliseconds status_effect_duration {10'000};
 
 constexpr std::array entity_type_priority {
   entities::EntityType::PowerUp,
