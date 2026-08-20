@@ -1,13 +1,11 @@
-#include "tty_invaders/gameplay/collision_buffer.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <stdexcept>
-#include <utility>
 
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/gameplay/collision_data.h"
 #include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/geometry/rect_coords.h"
@@ -16,16 +14,18 @@
 
 namespace tty_invaders::gameplay {
 CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
-    : front_types {std::vector<entities::EntityType>(
-        td.main_height * td.width, entities::EntityType::None
-      )}
-    , back_types {std::vector<entities::EntityType>(
-        td.main_height * td.width, entities::EntityType::None
-      )}
-    , ship_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
-    , invader_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
-    , defender_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
-    , power_up_ids {std::vector<std::size_t>(td.main_height * td.width, 0)} {
+  : front_types {std::vector<entities::EntityType>(
+      td.main_height * td.width,
+      entities::EntityType::None
+    )}
+  , back_types {std::vector<entities::EntityType>(
+      td.main_height * td.width,
+      entities::EntityType::None
+    )}
+  , ship_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+  , invader_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+  , defender_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+  , power_up_ids {std::vector<std::size_t>(td.main_height * td.width, 0)} {
   assert(
     front_types.size() == back_types.size() && front_types.size() == ship_ids.size()
   );
@@ -39,7 +39,8 @@ CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
 }
 
 void CollisionBuffer::dispatch_collisions(
-  CollisionHandler& ch, const entities::Projectiles& projectiles
+  CollisionHandler& ch,
+  const entities::Projectiles& projectiles
 ) const {
   for (std::size_t i {0}; i < back_types.size(); ++i) {
     constexpr auto ship_types {
@@ -65,34 +66,28 @@ void CollisionBuffer::dispatch_collisions(
           | entities::EntityType::DefenderBullet
       )
     ) {
-      ch.dispatch(
-        CollisionData {
-          .effect {projectiles.effects[defender_bullet_ids[i]]},
-          .target = entities::EntityType::Invader,
-          .target_id = ship_ids[i]
-        }
+      ch.collisions.emplace_back(
+        projectiles.effects[defender_bullet_ids[i]],
+        entities::EntityType::Invader,
+        ship_ids[i]
       );
       continue;
     }
 
     if (entities::intersects(back_types[i], entities::EntityType::InvaderBullet)) {
-      ch.dispatch(
-        CollisionData {
-          .effect {projectiles.effects[invader_bullet_ids[i]]},
-          .target = entities::EntityType::Defender,
-          .target_id = ship_ids[i]
-        }
+      ch.collisions.emplace_back(
+        projectiles.effects[invader_bullet_ids[i]],
+        entities::EntityType::Defender,
+        ship_ids[i]
       );
       continue;
     }
 
     if (entities::intersects(back_types[i], entities::EntityType::PowerUp)) {
-      ch.dispatch(
-        CollisionData {
-          .effect {projectiles.effects[invader_bullet_ids[i]]},
-          .target = entities::EntityType::Defender,
-          .target_id = ship_ids[i]
-        }
+      ch.collisions.emplace_back(
+        projectiles.effects[invader_bullet_ids[i]],
+        entities::EntityType::Defender,
+        ship_ids[i]
       );
     }
   }
@@ -105,8 +100,11 @@ bool CollisionBuffer::area_contains(
   const rendering::TermDims& bounds
 ) const {
   const auto& types {front ? front_types : back_types};
-  for (std::size_t y_offset {area.tl_y * bounds.width}; y_offset < area.br_y;
-       y_offset += bounds.width) {
+  for (
+    std::size_t y_offset {area.tl_y * bounds.width};
+    y_offset < area.br_y * bounds.width;
+    y_offset += bounds.width
+  ) {
     for (std::size_t x {area.tl_x}; x < area.br_x; ++x) {
       if (utility::mask::is_subset(type, types[y_offset + x])) {
         return true;

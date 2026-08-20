@@ -1,20 +1,32 @@
-#include "tty_invaders/rendering/rendering.h"
-
 #include <algorithm>
 #include <cstddef>
 #include <iostream>
 #include <string>
 
+#include "tty_invaders/entities/defender.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/geometry/rect_coords.h"
+#include "tty_invaders/io/term.h"
+#include "tty_invaders/opts/game_settings.h"
 #include "tty_invaders/rendering/formatting.h"
 #include "tty_invaders/rendering/render_attr.h"
+#include "tty_invaders/rendering/rendering.h"
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::rendering {
-void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
-  geometry::RectCoords min_rect {dirty_area(cb, td)};
+void render_bar(const entities::Defender& defender, const TermDims& bounds) {
+  std::string result;
+  result.reserve(
+    opts::game_settings::action_bar_height * bounds.width
+    * expected_render_bytes_per_cell
+  );
+
+
+}
+
+void render_main(const gameplay::CollisionBuffer& cb, const TermDims& bounds) {
+  geometry::RectCoords min_rect {dirty_area(cb, bounds)};
   if (min_rect.empty()) {
     return;
   }
@@ -25,9 +37,10 @@ void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
   );
 
   Formatting prev {Formatting::None};
-  for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y; ++y) {
+  for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y * bounds.width; ++y) {
+    io::term::move_cursor(result, min_rect.tl_x, y);
     for (std::size_t x {min_rect.tl_x}; x < min_rect.br_x; ++x) {
-      RenderAttr ra {dominant_type(cb.back_types[y * td.width + x])};
+      RenderAttr ra {dominant_type(cb.back_types[y * bounds.width + x])};
       result += ansi_escape(prev, ra.formatting);
       result += ra.ch;
     }
@@ -37,7 +50,8 @@ void render(const gameplay::CollisionBuffer& cb, const TermDims& td) {
 }
 
 geometry::RectCoords dirty_area(
-  const gameplay::CollisionBuffer& cb, const TermDims& bounds
+  const gameplay::CollisionBuffer& cb,
+  const TermDims& bounds
 ) {
   geometry::RectCoords dirty_area {};
   bool first {true};
