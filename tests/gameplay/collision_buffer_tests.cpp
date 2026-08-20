@@ -1,8 +1,9 @@
+#include "tty_invaders/gameplay/collision_buffer.h"
+
 #include <gtest/gtest.h>
 
 #include "helpers/setup_helpers.h"
 #include "tty_invaders/entities/entity_type.h"
-#include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
 
@@ -19,14 +20,18 @@ TEST(CollisionBufferTests, AreaContainsTests) {
   ASSERT_FALSE(cb.area_contains(
     area_nothing,
     entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
     bounds
   ));
 
   geometry::RectCoords area_defender {.tl_x = 30, .tl_y = 0, .br_x = 61, .br_y = 11};
-  ASSERT_TRUE(cb.area_contains(area_defender, entities::EntityType::Defender, bounds));
+  ASSERT_TRUE(
+    cb.area_contains(area_defender, entities::EntityType::Defender, true, bounds)
+  );
   ASSERT_TRUE(cb.area_contains(
     area_defender,
     entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
     bounds
   ));
 
@@ -34,6 +39,7 @@ TEST(CollisionBufferTests, AreaContainsTests) {
   ASSERT_TRUE(cb.area_contains(
     area_both,
     entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
     bounds
   ));
 
@@ -41,6 +47,7 @@ TEST(CollisionBufferTests, AreaContainsTests) {
   ASSERT_FALSE(cb.area_contains(
     area_empty,
     entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
     bounds
   ));
 }

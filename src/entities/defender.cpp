@@ -1,5 +1,3 @@
-#include "tty_invaders/entities/defender.h"
-
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -8,6 +6,7 @@
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/effects/status_effects.h"
+#include "tty_invaders/entities/defender.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectiles.h"
@@ -19,16 +18,23 @@
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::entities {
-Defender::Defender(const templates::ShipBody* body, const int armor, const int lives)
-    : body {body}
-    , armor {armor}
-    , lives {lives} {
+Defender::Defender(
+  const templates::ShipBody* body,
+  const int armor,
+  const int lives,
+  const int atk_spd
+)
+  : body {body}
+  , armor {armor}
+  , lives {lives} 
+  , atk_spd {atk_spd} {
   if (lives <= 0) {
     throw std::runtime_error(
       "Error initializing defender: "
       "Amount of lives must be greater 0!"
     );
   }
+
 }
 
 void Defender::move(
@@ -45,19 +51,19 @@ void Defender::move(
 
   if (kp.type == io::KeyPress::Type::Arrow) {
     switch (kp.arrow) {
-      case io::ctrls::ArrowDirection::Up: y_vel = -1; break;
-      case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
-      case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
-      case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
-      default: std::unreachable();
+    case io::ctrls::ArrowDirection::Up: y_vel = -1; break;
+    case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
+    case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
+    case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
+    default: std::unreachable();
     }
   } else {
     switch (kp.ch) {
-      case opts::game_settings::movement::up: y_vel = -1; break;
-      case opts::game_settings::movement::down: y_vel = 1; break;
-      case opts::game_settings::movement::right: x_vel = 1; break;
-      case opts::game_settings::movement::left: x_vel = -1; break;
-      default: return;
+    case opts::game_settings::movement::up: y_vel = -1; break;
+    case opts::game_settings::movement::down: y_vel = 1; break;
+    case opts::game_settings::movement::right: x_vel = 1; break;
+    case opts::game_settings::movement::left: x_vel = -1; break;
+    default: return;
     }
   }
 
@@ -111,7 +117,8 @@ void Defender::cleanup(std::chrono::milliseconds delta_time) {
 }
 
 void Defender::populate_coll_buf(
-  gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
 ) const {
   for (const auto& [x_offset, y_offset] : body->hitbox_pos) {
     int hitbox_x {tl_x + x_offset};
@@ -134,7 +141,12 @@ void Defender::populate_coll_buf(
   }
 }
 
-void Defender::populate_projectiles(Projectiles& projectiles) const {
+void Defender::populate_projectiles(Projectiles& projectiles) {
+  if (++refract <= atk_spd) {
+    return;
+  }
+
+  refract = 0;
   for (const auto& idx : body->cannon_pos) {
     projectiles.add(
       body->hitbox_pos[idx].x,

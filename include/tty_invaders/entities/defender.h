@@ -12,7 +12,12 @@
 
 namespace tty_invaders::entities {
 struct Defender {
-  explicit Defender(const templates::ShipBody* body, const int armor, const int lives);
+  explicit Defender(
+    const templates::ShipBody* body,
+    const int armor,
+    const int lives,
+    const int atk_spd
+  );
 
   void move(
     const io::KeyPress&,
@@ -23,18 +28,18 @@ struct Defender {
   void cleanup(std::chrono::milliseconds);
 
   const templates::ShipBody* body;
-  int tl_x;
-  int tl_y;
+  int tl_x {0};
+  int tl_y {0};
   int armor;
   int lives;
-  int refract;
+  int refract {0};
   int atk_spd;
-  effects::StatusEffect effect;
-  std::chrono::milliseconds effect_duration;
+  effects::StatusEffect effect {effects::StatusEffect::None};
+  std::chrono::milliseconds effect_duration {0};
 
 private:
   void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&) const;
-  void populate_projectiles(Projectiles&) const;
+  void populate_projectiles(Projectiles&);
 };
 } // namespace tty_invaders::entities
 

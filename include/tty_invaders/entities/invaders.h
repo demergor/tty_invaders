@@ -19,7 +19,6 @@ struct Invaders {
     const std::vector<int>& tl_xs,
     const std::vector<int>& tl_ys,
     const std::vector<int>& armor,
-    const std::vector<int>& lives,
     const std::vector<int>& atk_spds,
     const std::vector<effects::StatusEffect> effects
   );

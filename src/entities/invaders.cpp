@@ -1,11 +1,10 @@
-#include "tty_invaders/entities/invaders.h"
-
 #include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/invaders.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/entities/templates/ship_body.h"
@@ -20,7 +19,6 @@ Invaders::Invaders(
   const std::vector<int>& tl_xs,
   const std::vector<int>& tl_ys,
   const std::vector<int>& armor,
-  const std::vector<int>& lives,
   const std::vector<int>& atk_spds,
   const std::vector<effects::StatusEffect> effects
 )
@@ -38,7 +36,9 @@ Invaders::Invaders(
     );
   }
 
-  auto is_negative {[](const int val) { return val < 0; }};
+  auto is_negative {[](const int val) {
+    return val < 0;
+  }};
   if (std::find_if(armor.begin(), armor.end(), is_negative) != armor.end()) {
     throw std::runtime_error(
       "Error initializing invaders: Armor-vector contains negative values!"
@@ -52,9 +52,15 @@ Invaders::Invaders(
   }
 
   if (
-    std::find_if(lives.begin(), lives.end(), [](const int val) { return val <= 0; })
+    std::find_if(
+      armor.begin(),
+      armor.end(),
+      [](const int val) {
+        return val <= 0;
+      }
+    )
 
-    != lives.end()
+    != armor.end()
   ) {
     throw std::runtime_error(
       "Error initializing invaders: Lives-vector contains values < 1!"
@@ -84,10 +90,13 @@ void Invaders::cleanup() {
 }
 
 // TODO: Implement
-void Invaders::move(const rendering::TermDims& bounds) { return; }
+void Invaders::move(const rendering::TermDims& bounds) {
+  return;
+}
 
 void Invaders::populate_collision_buffer(
-  gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
 ) const {
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     for (const auto& [x_offset, y_offset] : ship_bodies[i]->hitbox_pos) {

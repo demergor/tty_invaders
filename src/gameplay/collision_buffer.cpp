@@ -6,7 +6,6 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
-#include "tty_invaders/gameplay/collision_data.h"
 #include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"

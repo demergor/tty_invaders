@@ -16,6 +16,8 @@ constexpr char right {'d'};
 constexpr char left {'a'};
 } // namespace movement
 
+constexpr char heart {'@'};
+
 constexpr int defender_lives {3};
 constexpr int defender_armor {100};
 constexpr int defender_atk_freq {10};
@@ -27,9 +29,10 @@ constexpr int invader_atk_dmg {25};
 
 constexpr int defender_mov_spd {1};
 
-constexpr int action_bar_height {1};
+constexpr int action_bar_height {2};
 
 constexpr std::chrono::milliseconds status_effect_duration {10'000};
+constexpr std::chrono::milliseconds tick_rate {50};
 
 constexpr std::array entity_type_priority {
   entities::EntityType::PowerUp,

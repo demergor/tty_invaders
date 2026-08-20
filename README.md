@@ -1,6 +1,5 @@
 ## Work In Progress:
-- write main loop
-- implement action bar rendering
+- write tests for everything major (currently there is a bug that freezes the game)
 - add power ups in-game
 
 ## Future: 

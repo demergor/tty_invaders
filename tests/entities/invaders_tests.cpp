@@ -25,7 +25,6 @@ protected:
     {10, 20, 30},
     {10, 10, 10},
     {100, 100, 100},
-    {1, 1, 1},
     {0, 0, 0},
     {effects::StatusEffect::None,
      effects::StatusEffect::None,

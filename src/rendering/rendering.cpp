@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <iostream>
 #include <string>
+#include <utility>
 
 #include "tty_invaders/entities/defender.h"
 #include "tty_invaders/entities/entity_type.h"
@@ -16,13 +17,38 @@
 
 namespace tty_invaders::rendering {
 void render_bar(const entities::Defender& defender, const TermDims& bounds) {
+  if (bounds.width > 2) {
+    return;
+  }
+
   std::string result;
   result.reserve(
     opts::game_settings::action_bar_height * bounds.width
     * expected_render_bytes_per_cell
   );
 
+  io::term::move_cursor(result, 0, bounds.main_height);
+  result += io::term::clear_line;
 
+  if (std::cmp_greater_equal(bounds.width, defender.lives)) {
+    result += std::to_string(defender.lives) + std::string {io::term::red}
+      + opts::game_settings::heart;
+  } else {
+    result += std::string {io::term::red}
+      + std::string(
+        static_cast<std::size_t>(defender.lives),
+        opts::game_settings::heart
+      );
+  }
+
+  if (opts::game_settings::action_bar_height < 2) {
+    return;
+  }
+
+  effects::StatusEffectStrData data {str_data(defender.effect)};
+  result += bounds.width >= data.num_chars
+    ? '\n' + std::string {io::term::clear_line} + data.str
+    : "";
 }
 
 void render_main(const gameplay::CollisionBuffer& cb, const TermDims& bounds) {
@@ -37,7 +63,7 @@ void render_main(const gameplay::CollisionBuffer& cb, const TermDims& bounds) {
   );
 
   Formatting prev {Formatting::None};
-  for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y * bounds.width; ++y) {
+  for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y; ++y) {
     io::term::move_cursor(result, min_rect.tl_x, y);
     for (std::size_t x {min_rect.tl_x}; x < min_rect.br_x; ++x) {
       RenderAttr ra {dominant_type(cb.back_types[y * bounds.width + x])};

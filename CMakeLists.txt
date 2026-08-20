@@ -39,6 +39,8 @@ set(SANITIZER_OPTIONS
 
 add_library(
   tty_invaders_lib
+  src/entities/defender.cpp
+  src/entities/entity_type.cpp
   src/entities/invaders.cpp
   src/entities/projectiles.cpp
   src/entities/templates/ships.cpp
@@ -49,10 +51,12 @@ add_library(
 
   src/geometry/rect_coords.cpp
 
+  src/io/io.cpp
   src/io/raw_term.cpp
 
   src/rendering/term_dims.cpp
   src/rendering/rendering.cpp
+  src/rendering/render_attr.cpp
 )
 
 target_include_directories(
