@@ -7,6 +7,8 @@
 #include "tty_invaders/entities/entity_type.h"
 
 namespace tty_invaders::opts::game_settings {
+constexpr char quit_key {'q'};
+
 namespace movement {
 constexpr char up {'w'};
 constexpr char down {'s'};
