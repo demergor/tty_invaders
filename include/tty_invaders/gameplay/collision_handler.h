@@ -15,6 +15,9 @@ struct CollisionHandler {
   void handle_collisions(entities::Defender&, entities::Invaders&);
 
   std::vector<CollisionData> collisions;
+
+private:
+  std::vector<CollisionData>::iterator deduplicate_collisions();
 };
 } // namespace tty_invaders::gameplay
 

@@ -21,7 +21,7 @@ struct CollisionBuffer {
   explicit CollisionBuffer(const rendering::TermDims&);
 
   void dispatch_collisions(CollisionHandler&, const entities::Projectiles&) const;
-  bool area_contains(
+  bool area_contains_deprecated(
     const geometry::RectCoords& area,
     entities::EntityType type,
     const bool front,

@@ -93,30 +93,6 @@ void CollisionBuffer::dispatch_collisions(
   }
 }
 
-// TODO: Deprecate
-bool CollisionBuffer::area_contains(
-  const geometry::RectCoords& area,
-  entities::EntityType type,
-  const bool front,
-  const rendering::TermDims& bounds
-) const {
-  const auto& types {front ? front_types : back_types};
-  for (
-    std::size_t y_offset {area.tl_y * bounds.width};
-    y_offset < area.br_y * bounds.width;
-    y_offset += bounds.width
-  ) {
-    for (std::size_t x {area.tl_x}; x < area.br_x; ++x) {
-      if (utility::mask::is_subset(type, types[y_offset + x])) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-// TODO: Write test or change overload test to match this signature
 bool CollisionBuffer::area_contains(
   const std::size_t idx,
   const std::vector<geometry::Point>& offsets,
