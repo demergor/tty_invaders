@@ -1,3 +1,5 @@
+#include "tty_invaders/entities/defender.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -6,7 +8,6 @@
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/effects/status_effect.h"
-#include "tty_invaders/entities/defender.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectiles.h"
@@ -24,17 +25,16 @@ Defender::Defender(
   const int lives,
   const int atk_spd
 )
-  : body {body}
-  , armor {armor}
-  , lives {lives} 
-  , atk_spd {atk_spd} {
+    : body {body}
+    , armor {armor}
+    , lives {lives}
+    , atk_spd {atk_spd} {
   if (lives <= 0) {
     throw std::runtime_error(
       "Error initializing defender: "
       "Amount of lives must be greater 0!"
     );
   }
-
 }
 
 void Defender::move(
@@ -51,19 +51,19 @@ void Defender::move(
 
   if (kp.type == io::KeyPress::Type::Arrow) {
     switch (kp.arrow) {
-    case io::ctrls::ArrowDirection::Up: y_vel = -1; break;
-    case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
-    case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
-    case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
-    default: std::unreachable();
+      case io::ctrls::ArrowDirection::Up: y_vel = -1; break;
+      case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
+      case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
+      case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
+      default: std::unreachable();
     }
   } else {
     switch (kp.ch) {
-    case opts::game_settings::movement::up: y_vel = -1; break;
-    case opts::game_settings::movement::down: y_vel = 1; break;
-    case opts::game_settings::movement::right: x_vel = 1; break;
-    case opts::game_settings::movement::left: x_vel = -1; break;
-    default: return;
+      case opts::game_settings::movement::up: y_vel = -1; break;
+      case opts::game_settings::movement::down: y_vel = 1; break;
+      case opts::game_settings::movement::right: x_vel = 1; break;
+      case opts::game_settings::movement::left: x_vel = -1; break;
+      default: return;
     }
   }
 
@@ -86,8 +86,9 @@ void Defender::move(
     return;
   }
 
-  std::size_t cb_idx {bounds.width * bounding_box.tl_y + bounding_box.tl_x};
-  if (cb.area_contains(cb_idx, body->hitbox_pos, EntityType::Invader, true, bounds)) {
+  if (
+    cb.area_contains(tl_x, tl_y, body->hitbox_pos, EntityType::Invader, true, bounds)
+  ) {
     return;
   }
 

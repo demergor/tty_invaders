@@ -1,3 +1,5 @@
+#include "tty_invaders/gameplay/collision_buffer.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -5,26 +7,23 @@
 
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
-#include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/gameplay/collision_handler.h"
-#include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
-#include "tty_invaders/utility/mask.h"
 
 namespace tty_invaders::gameplay {
 CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
-  : front_types {std::vector<entities::EntityType>(
-      td.main_height * td.width,
-      entities::EntityType::None
-    )}
-  , back_types {std::vector<entities::EntityType>(
-      td.main_height * td.width,
-      entities::EntityType::None
-    )}
-  , ship_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
-  , invader_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
-  , defender_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
-  , power_up_ids {std::vector<std::size_t>(td.main_height * td.width, 0)} {
+    : front_types {std::vector<entities::EntityType>(
+        td.main_height * td.width,
+        entities::EntityType::None
+      )}
+    , back_types {std::vector<entities::EntityType>(
+        td.main_height * td.width,
+        entities::EntityType::None
+      )}
+    , ship_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+    , invader_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+    , defender_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+    , power_up_ids {std::vector<std::size_t>(td.main_height * td.width, 0)} {
   assert(
     front_types.size() == back_types.size() && front_types.size() == ship_ids.size()
   );
@@ -43,28 +42,12 @@ void CollisionBuffer::dispatch_collisions(
   const entities::Projectiles& projectiles
 ) const {
   for (std::size_t i {0}; i < back_types.size(); ++i) {
-    constexpr auto ship_types {
-      entities::EntityType::Defender | entities::EntityType::Invader
-      | entities::EntityType::InvaderBoss
-    };
-    constexpr auto projectile_types {
-      entities::EntityType::DefenderBullet | entities::EntityType::InvaderBullet
-      | entities::EntityType::PowerUp
-    };
-
-    if (
-      !entities::intersects(back_types[i], ship_types)
-      || !entities::intersects(back_types[i], projectile_types)
-    ) {
-      continue;
-    }
-
     if (
       entities::intersects(
-        back_types[i],
-        entities::EntityType::Invader | entities::EntityType::InvaderBoss
-          | entities::EntityType::DefenderBullet
+        entities::EntityType::Invader | entities::EntityType::InvaderBoss,
+        back_types[i]
       )
+      && entities::intersects(entities::EntityType::DefenderBullet, back_types[i])
     ) {
       ch.collisions.emplace_back(
         projectiles.effects[defender_bullet_ids[i]],
@@ -74,7 +57,11 @@ void CollisionBuffer::dispatch_collisions(
       continue;
     }
 
-    if (entities::intersects(back_types[i], entities::EntityType::InvaderBullet)) {
+    if (!entities::intersects(entities::EntityType::Defender, back_types[i])) {
+      continue;
+    }
+
+    if (entities::intersects(entities::EntityType::InvaderBullet, back_types[i])) {
       ch.collisions.emplace_back(
         projectiles.effects[invader_bullet_ids[i]],
         entities::EntityType::Defender,
@@ -83,9 +70,9 @@ void CollisionBuffer::dispatch_collisions(
       continue;
     }
 
-    if (entities::intersects(back_types[i], entities::EntityType::PowerUp)) {
+    if (entities::intersects(entities::EntityType::PowerUp, back_types[i])) {
       ch.collisions.emplace_back(
-        projectiles.effects[invader_bullet_ids[i]],
+        projectiles.effects[power_up_ids[i]],
         entities::EntityType::Defender,
         ship_ids[i]
       );
@@ -94,18 +81,29 @@ void CollisionBuffer::dispatch_collisions(
 }
 
 bool CollisionBuffer::area_contains(
-  const std::size_t idx,
+  const int tl_x,
+  const int tl_y,
   const std::vector<geometry::Point>& offsets,
   entities::EntityType type,
   const bool front,
   const rendering::TermDims& bounds
 ) const {
   const auto width {static_cast<int>(bounds.width)};
-  const auto buf_offset {static_cast<int>(idx)};
+  const auto height {static_cast<int>(bounds.main_height)};
   const auto& types {front ? front_types : back_types};
 
   for (const auto& [x_offset, y_offset] : offsets) {
-    const int offset_idx {buf_offset + x_offset + y_offset * width};
+    const int x_pos {tl_x + x_offset};
+    if (x_pos < 0 || x_pos >= width) {
+      continue;
+    }
+
+    const int y_pos {tl_y + y_offset};
+    if (y_pos < 0 || y_pos >= height) {
+      continue;
+    }
+
+    const int offset_idx {y_pos * width + x_pos};
     if (offset_idx < 0) {
       continue;
     }
@@ -115,7 +113,7 @@ bool CollisionBuffer::area_contains(
       continue;
     }
 
-    if (utility::mask::is_subset(type, types[offset_buf_idx])) {
+    if (entities::intersects(type, types[offset_buf_idx])) {
       return true;
     }
   }

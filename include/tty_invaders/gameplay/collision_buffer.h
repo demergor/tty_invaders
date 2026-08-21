@@ -7,7 +7,6 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/geometry/point.h"
-#include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::entities {
@@ -21,14 +20,9 @@ struct CollisionBuffer {
   explicit CollisionBuffer(const rendering::TermDims&);
 
   void dispatch_collisions(CollisionHandler&, const entities::Projectiles&) const;
-  bool area_contains_deprecated(
-    const geometry::RectCoords& area,
-    entities::EntityType type,
-    const bool front,
-    const rendering::TermDims& bounds
-  ) const;
   bool area_contains(
-    const std::size_t idx,
+    const int tl_x,
+    const int tl_y,
     const std::vector<geometry::Point>& offsets,
     entities::EntityType type,
     const bool front,

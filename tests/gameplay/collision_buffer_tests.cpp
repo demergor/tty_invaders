@@ -1,5 +1,8 @@
 #include <cstddef>
+#include <format>
 #include <gtest/gtest.h>
+#include <string>
+#include <vector>
 
 #include "helpers/setup_helpers.h"
 #include "tty_invaders/effects/collision_effect.h"
@@ -11,6 +14,25 @@
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::gameplay {
+namespace {
+std::string to_string(const std::vector<CollisionData>& collisions) {
+  std::string result {"Collision vector contents: {\n"};
+  for (const auto& collision : collisions) {
+    result += std::format(
+      "{{\neffect: {{ type: {}, val: {} }},\n"
+      "target: {},\n"
+      "target_id: {}\n}}",
+      std::to_underlying(collision.effect.type),
+      collision.effect.val,
+      std::to_underlying(collision.target),
+      collision.target_id
+    );
+  }
+
+  return result + "\n}";
+}
+} // namespace
+
 TEST(CollisionBufferTests, DispatchCollisionsTest) {
   rendering::TermDims bounds {tests::helpers::term_dims(1, 24, 80)};
   CollisionBuffer cb {bounds};
@@ -93,27 +115,45 @@ TEST(CollisionBufferTests, DispatchCollisionsTest) {
   };
 
   cb.dispatch_collisions(ch, projectiles);
-  const auto coll_data_equal {[](const CollisionData& a, const CollisionData& b) {
-    return a.effect.type == b.effect.type && a.effect.val == b.effect.val
-      && a.target == b.target && a.target_id == b.target_id;
-  }};
+  ASSERT_EQ(ch.collisions.size(), expected_collision_data.size());
 
   for (std::size_t i {0}; i < expected_collision_data.size(); ++i) {
-    ASSERT_TRUE(coll_data_equal(expected_collision_data[i], ch.collisions[i]));
+    const auto coll_data_equal {[expected =
+                                    expected_collision_data[i]](const auto& actual) {
+      return expected.effect.type == actual.effect.type
+        && expected.effect.val == actual.effect.val && expected.target == actual.target
+        && expected.target_id == actual.target_id;
+    }};
+
+    ASSERT_NE(
+      std::find_if(ch.collisions.begin(), ch.collisions.end(), coll_data_equal),
+      ch.collisions.end()
+    ) << "Not found for expected collision data at index " + std::to_string(i) + "\n"
+        + to_string(ch.collisions);
   }
 }
 
 TEST(CollisionBufferTests, AreaContainsTest) {
   const rendering::TermDims bounds {tests::helpers::term_dims(1, 24, 80)};
   CollisionBuffer cb {bounds};
+  std::fill(cb.front_types.begin(), cb.front_types.end(), entities::EntityType::None);
 
   cb.front_types[2 * bounds.width + 30] = entities::EntityType::Defender;
   cb.front_types[10 * bounds.width + 60] = entities::EntityType::Defender;
   cb.front_types[13 * bounds.width + 5] = entities::EntityType::DefenderBullet;
 
-  std::size_t y_offset {2 * bounds.width};
   ASSERT_FALSE(cb.area_contains(
-    y_offset + 25,
+    25,
+    0,
+    entities::templates::destroyer.hitbox_pos,
+    entities::EntityType::Defender,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    26,
+    0,
     entities::templates::destroyer.hitbox_pos,
     entities::EntityType::Defender | entities::EntityType::DefenderBullet,
     true,
@@ -121,15 +161,8 @@ TEST(CollisionBufferTests, AreaContainsTest) {
   ));
 
   ASSERT_TRUE(cb.area_contains(
-    y_offset + 26,
-    entities::templates::destroyer.hitbox_pos,
-    entities::EntityType::Defender | entities::EntityType::DefenderBullet,
-    true,
-    bounds
-  ));
-
-  ASSERT_TRUE(cb.area_contains(
-    y_offset + 26,
+    26,
+    0,
     entities::templates::destroyer.hitbox_pos,
     entities::EntityType::Defender,
     true,
@@ -137,43 +170,46 @@ TEST(CollisionBufferTests, AreaContainsTest) {
   ));
 
   ASSERT_FALSE(cb.area_contains(
-    y_offset + 26,
+    26,
+    0,
     entities::templates::destroyer.hitbox_pos,
     entities::EntityType::DefenderBullet,
     true,
     bounds
   ));
 
-  y_offset = 10 * bounds.width;
   ASSERT_FALSE(cb.area_contains(
-    y_offset + 5,
-    entities::templates::fighter.hitbox_pos,
-    entities::EntityType::Defender | entities::EntityType::DefenderBullet,
-    true,
-    bounds
-  ));
-
-  y_offset = 11 * bounds.width;
-  ASSERT_TRUE(cb.area_contains(
-    y_offset + 5,
-    entities::templates::fighter.hitbox_pos,
-    entities::EntityType::Defender | entities::EntityType::DefenderBullet,
-    true,
-    bounds
-  ));
-
-  ASSERT_FALSE(cb.area_contains(
-    y_offset + 5,
-    entities::templates::fighter.hitbox_pos,
-    entities::EntityType::Defender,
-    true,
-    bounds
-  ));
-
-  ASSERT_FALSE(cb.area_contains(
-    y_offset + 5,
+    5,
+    10,
     entities::templates::fighter.hitbox_pos,
     entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    5,
+    11,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    5,
+    11,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_FALSE(cb.area_contains(
+    5,
+    11,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::Defender,
     true,
     bounds
   ));
