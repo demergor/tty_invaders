@@ -3,7 +3,7 @@
 
 #include <chrono>
 
-#include "tty_invaders/effects/status_effects.h"
+#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/ship_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"

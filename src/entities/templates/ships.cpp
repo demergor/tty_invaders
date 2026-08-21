@@ -45,6 +45,16 @@ const ShipBody fighter {
   .br_y = 2
 };
 
+// TODO: Define (more)
+/*
+ * const ShipBody invader {
+ * .hitbox_pos {
+ * },
+ * .cannon_pos {0, 1, 2},
+ * .br_x
+ * };
+ */
+
 const ShipBody speeder {
   .hitbox_pos {
     {1, 0}, //

@@ -1,6 +1,6 @@
-#include "tty_invaders/io/key_press.h"
-
 #include <utility>
+
+#include "tty_invaders/io/key_press.h"
 
 namespace tty_invaders::io {
 bool KeyPress::operator==(const KeyPress& other) {

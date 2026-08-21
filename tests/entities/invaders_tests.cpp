@@ -5,7 +5,7 @@
 
 #include "helpers/setup_helpers.h"
 #include "tty_invaders/effects/collision_effect.h"
-#include "tty_invaders/effects/status_effects.h"
+#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/invaders.h"
 #include "tty_invaders/entities/projectiles.h"

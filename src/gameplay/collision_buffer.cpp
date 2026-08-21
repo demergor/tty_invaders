@@ -37,6 +37,7 @@ CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
   }
 }
 
+// TODO: Write tests
 void CollisionBuffer::dispatch_collisions(
   CollisionHandler& ch,
   const entities::Projectiles& projectiles
@@ -92,6 +93,7 @@ void CollisionBuffer::dispatch_collisions(
   }
 }
 
+// TODO: Deprecate
 bool CollisionBuffer::area_contains(
   const geometry::RectCoords& area,
   entities::EntityType type,

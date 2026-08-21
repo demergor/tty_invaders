@@ -1,3 +1,5 @@
+#include "tty_invaders/rendering/rendering.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <iostream>
@@ -12,10 +14,11 @@
 #include "tty_invaders/opts/game_settings.h"
 #include "tty_invaders/rendering/formatting.h"
 #include "tty_invaders/rendering/render_attr.h"
-#include "tty_invaders/rendering/rendering.h"
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::rendering {
+// TODO: Write tests and maybe make the rendering functions return strings to cout
+// myself
 void render_bar(const entities::Defender& defender, const TermDims& bounds) {
   if (bounds.width > 2) {
     return;
@@ -49,8 +52,11 @@ void render_bar(const entities::Defender& defender, const TermDims& bounds) {
   result += bounds.width >= data.num_chars
     ? '\n' + std::string {io::term::clear_line} + data.str
     : "";
+
+  std::cout << result;
 }
 
+// TODO: Test
 void render_main(const gameplay::CollisionBuffer& cb, const TermDims& bounds) {
   geometry::RectCoords min_rect {dirty_area(cb, bounds)};
   if (min_rect.empty()) {

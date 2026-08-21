@@ -11,7 +11,8 @@
 
 namespace tty_invaders::entities {
 void Projectiles::update(
-  gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
 ) {
   move(bounds);
   populate_coll_buf(cb, bounds);
@@ -67,6 +68,7 @@ void Projectiles::move(const rendering::TermDims& bounds) {
   }
 }
 
+// TODO: Write test
 void Projectiles::remove(const std::size_t idx) {
   if (idx >= xs.size()) {
     throw std::runtime_error(
@@ -97,8 +99,10 @@ void Projectiles::remove(const std::size_t idx) {
   effects.pop_back();
 }
 
+// TODO: Write test
 void Projectiles::populate_coll_buf(
-  gameplay::CollisionBuffer& cb, const rendering::TermDims& bounds
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
 ) {
   for (std::size_t i {0}; i < xs.size(); ++i) {
     const auto grid_x {static_cast<std::size_t>(xs[i])};
@@ -107,15 +111,9 @@ void Projectiles::populate_coll_buf(
     cb.back_types[cb_idx] &= types[i];
 
     switch (types[i]) {
-      case EntityType::DefenderBullet:
-        cb.defender_bullet_ids[cb_idx] = i;
-        break;
-      case EntityType::InvaderBullet:
-        cb.invader_bullet_ids[cb_idx] = i;
-        break;
-      case EntityType::PowerUp:
-        cb.power_up_ids[cb_idx] = i;
-        break;
+      case EntityType::DefenderBullet: cb.defender_bullet_ids[cb_idx] = i; break;
+      case EntityType::InvaderBullet: cb.invader_bullet_ids[cb_idx] = i; break;
+      case EntityType::PowerUp: cb.power_up_ids[cb_idx] = i; break;
       default: std::unreachable();
     }
   }

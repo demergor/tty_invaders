@@ -32,7 +32,7 @@ const ProjectileBody rocket {
     {0, 3},
     {1, 3}
   },
-  .tl {-1, 0}, 
+  .tl {-1, 0},
   .br {1, 3}
 };
 } // namespace tty_invaders::entities::templates
