@@ -1,10 +1,11 @@
+#include "tty_invaders/entities/invaders.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/entities/entity_type.h"
-#include "tty_invaders/entities/invaders.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/entities/templates/ship_body.h"
@@ -27,6 +28,7 @@ Invaders::Invaders(
     , tl_xs {tl_xs}
     , tl_ys {tl_ys}
     , armor {armor}
+    , refracts {std::vector(ship_bodies.size(), 0)}
     , atk_spds {atk_spds}
     , effects {effects} {
   if (tl_xs.size() != tl_ys.size()) {
@@ -121,8 +123,21 @@ void Invaders::populate_collision_buffer(
   }
 }
 
-void Invaders::populate_projectiles(Projectiles& projectiles) const {
+void Invaders::populate_projectiles(Projectiles& projectiles) {
+  if (refracts.size() != atk_spds.size() || refracts.size() != tl_xs.size()) {
+    throw std::runtime_error(
+      "Size mismatches!\nRefracts: " + std::to_string(refracts.size())
+      + "\nAttack speeds: " + std::to_string(atk_spds.size())
+      + "\ntl_xs: " + std::to_string(tl_xs.size())
+    );
+  }
+
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
+    if (++refracts[i] <= atk_spds[i]) {
+      continue;
+    }
+
+    refracts[i] = 0;
     for (const auto& idx : ship_bodies[i]->cannon_pos) {
       projectiles.add(
         tl_xs[i] + ship_bodies[i]->hitbox_pos[idx].x,
@@ -141,7 +156,7 @@ void Invaders::populate_projectiles(Projectiles& projectiles) const {
 }
 
 void Invaders::remove(const std::size_t idx) {
-  if (ship_bodies.size() >= idx) {
+  if (idx >= ship_bodies.size()) {
     throw std::runtime_error(
       "Error removing invader: Index is out of bounds!\nIndex: " + std::to_string(idx)
       + "\nSize: " + std::to_string(ship_bodies.size())

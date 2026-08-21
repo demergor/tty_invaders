@@ -41,7 +41,7 @@ private:
     gameplay::CollisionBuffer&,
     const rendering::TermDims&
   ) const;
-  void populate_projectiles(Projectiles&) const;
+  void populate_projectiles(Projectiles&);
   void remove(const std::size_t idx);
 };
 } // namespace tty_invaders::entities

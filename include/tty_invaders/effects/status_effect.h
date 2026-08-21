@@ -23,8 +23,11 @@ struct StatusEffectStrData {
   std::size_t num_chars;
 };
 
-constexpr std::array string_data {
-  std::pair {StatusEffect::None, StatusEffectStrData {"", 0}},
+const std::array string_data {
+  std::pair {
+    StatusEffect::None,
+    StatusEffectStrData {std::string {io::term::dim} + "No effect", 9}
+  },
   std::pair {
     StatusEffect::DoubleAtkSpd,
     StatusEffectStrData {std::string {io::term::yellow} + "2x ATK SPD", 10}

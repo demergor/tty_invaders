@@ -5,6 +5,8 @@
 
 #include <stdexcept>
 
+#include "tty_invaders/opts/game_settings.h"
+
 namespace tty_invaders::rendering {
 TermDims::TermDims() {
   winsize w;
@@ -15,7 +17,7 @@ TermDims::TermDims() {
     return;
   }
 
-  bar_height = 1;
+  bar_height = opts::game_settings::action_bar_height;
   if (bar_height > w.ws_row) {
     throw std::runtime_error("Action bar height too big for available terminal size!");
   }

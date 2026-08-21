@@ -1,5 +1,6 @@
 ## Work In Progress:
-- write tests for everything major (currently there is a bug that freezes the game)
+- figure out what causes bullets to be invincible
+- write tests for everything major
 - define formations
 - add power ups in-game
 

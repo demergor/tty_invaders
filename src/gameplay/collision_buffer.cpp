@@ -36,7 +36,6 @@ CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
   }
 }
 
-// TODO: Write tests
 void CollisionBuffer::dispatch_collisions(
   CollisionHandler& ch,
   const entities::Projectiles& projectiles

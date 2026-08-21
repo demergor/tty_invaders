@@ -8,42 +8,48 @@
 
 namespace tty_invaders::io::term {
 // Control
-inline constexpr std::string_view clear_screen {"\033[2J"}; // Clears visible screen
-inline constexpr std::string_view clear_line {"\033[2K"};   // Clears current line
-inline constexpr std::string_view cursor_home {"\033[H"};   // Moves cursor to (0,0)
-inline constexpr std::string_view hide_cursor {"\033[?25l"};
-inline constexpr std::string_view show_cursor {"\033[?25h"};
-inline constexpr std::string_view enter_alternate_screen {"\033[?1049h"};
-inline constexpr std::string_view leave_alternate_screen {"\033[?1049l"};
-inline constexpr std::string_view reset {"\033[0m"};
+constexpr std::string_view clear_screen {"\033[2J"}; // Clears visible screen
+constexpr std::string_view clear_line {"\033[2K"};   // Clears current line
+constexpr std::string_view hide_cursor {"\033[?25l"};
+constexpr std::string_view show_cursor {"\033[?25h"};
+constexpr std::string_view enter_alternate_screen {"\033[?1049h"};
+constexpr std::string_view leave_alternate_screen {"\033[?1049l"};
+constexpr std::string_view reset {"\033[0m"};
+
+// Navigation
+constexpr std::string_view cursor_home {"\033[H"}; // Moves cursor to (0,0)
+constexpr std::string_view cursor_up {"\033[A"};
+constexpr std::string_view cursor_down {"\033[B"};
+constexpr std::string_view cursor_right {"\033[C"};
+constexpr std::string_view cursor_left {"\033[D"};
 
 // Styles
-inline constexpr std::string_view bold {"\033[1m"};
-inline constexpr std::string_view dim {"\033[2m"};
-inline constexpr std::string_view underline {"\033[4m"};
+constexpr std::string_view bold {"\033[1m"};
+constexpr std::string_view dim {"\033[2m"};
+constexpr std::string_view underline {"\033[4m"};
 
 // Foreground (Text) Colors
-inline constexpr std::string_view grey {"\033[90m"};
-inline constexpr std::string_view red {"\033[31m"};
-inline constexpr std::string_view black {"\033[30m"};
-inline constexpr std::string_view green {"\033[32m"};
-inline constexpr std::string_view yellow {"\033[33m"};
-inline constexpr std::string_view blue {"\033[34m"};
-inline constexpr std::string_view magenta {"\033[35m"};
-inline constexpr std::string_view cyan {"\033[36m"};
-inline constexpr std::string_view white {"\033[37m"};
+constexpr std::string_view grey {"\033[90m"};
+constexpr std::string_view red {"\033[31m"};
+constexpr std::string_view black {"\033[30m"};
+constexpr std::string_view green {"\033[32m"};
+constexpr std::string_view yellow {"\033[33m"};
+constexpr std::string_view blue {"\033[34m"};
+constexpr std::string_view magenta {"\033[35m"};
+constexpr std::string_view cyan {"\033[36m"};
+constexpr std::string_view white {"\033[37m"};
 
 // Bright Foreground Colors
-inline constexpr std::string_view bright_red {"\033[91m"};
-inline constexpr std::string_view bright_green {"\033[92m"};
-inline constexpr std::string_view bright_yellow {"\033[93m"};
-inline constexpr std::string_view bright_blue {"\033[94m"};
+constexpr std::string_view bright_red {"\033[91m"};
+constexpr std::string_view bright_green {"\033[92m"};
+constexpr std::string_view bright_yellow {"\033[93m"};
+constexpr std::string_view bright_blue {"\033[94m"};
 
 // Background Colors
-inline constexpr std::string_view bg_red {"\033[41m"};
-inline constexpr std::string_view bg_green {"\033[42m"};
-inline constexpr std::string_view bg_yellow {"\033[43m"};
-inline constexpr std::string_view bg_blue {"\033[44m"};
+constexpr std::string_view bg_red {"\033[41m"};
+constexpr std::string_view bg_green {"\033[42m"};
+constexpr std::string_view bg_yellow {"\033[43m"};
+constexpr std::string_view bg_blue {"\033[44m"};
 
 inline void move_cursor(
   std::string& out_buf,

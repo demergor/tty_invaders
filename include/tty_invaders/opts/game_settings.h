@@ -18,6 +18,10 @@ constexpr char left {'a'};
 
 constexpr char heart {'@'};
 
+constexpr double high_percentage {100.0};
+constexpr double mid_percentage {70.0};
+constexpr double low_percentage {30.0};
+
 constexpr int defender_lives {3};
 constexpr int defender_armor {100};
 constexpr int defender_atk_freq {10};
