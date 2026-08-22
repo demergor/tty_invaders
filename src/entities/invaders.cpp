@@ -1,6 +1,7 @@
 #include "tty_invaders/entities/invaders.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <stdexcept>
 
@@ -12,6 +13,7 @@
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/opts/game_settings.h"
 #include "tty_invaders/rendering/term_dims.h"
+#include "tty_invaders/utility/containers.h"
 
 namespace tty_invaders::entities {
 Invaders::Invaders(
@@ -61,13 +63,25 @@ Invaders::Invaders(
         return val <= 0;
       }
     )
-
     != armor.end()
   ) {
     throw std::runtime_error(
       "Error initializing invaders: Lives-vector contains values < 1!"
     );
   }
+
+  assert(
+    utility::sizes_match(
+      ship_bodies,
+      projectile_bodies,
+      tl_xs,
+      tl_ys,
+      armor,
+      refracts,
+      atk_spds,
+      effects
+    )
+  );
 }
 
 void Invaders::update(
@@ -124,14 +138,6 @@ void Invaders::populate_collision_buffer(
 }
 
 void Invaders::populate_projectiles(Projectiles& projectiles) {
-  if (refracts.size() != atk_spds.size() || refracts.size() != tl_xs.size()) {
-    throw std::runtime_error(
-      "Size mismatches!\nRefracts: " + std::to_string(refracts.size())
-      + "\nAttack speeds: " + std::to_string(atk_spds.size())
-      + "\ntl_xs: " + std::to_string(tl_xs.size())
-    );
-  }
-
   for (std::size_t i {0}; i < tl_xs.size(); ++i) {
     if (++refracts[i] <= atk_spds[i]) {
       continue;
@@ -186,5 +192,18 @@ void Invaders::remove(const std::size_t idx) {
 
   effects[idx] = effects.back();
   effects.pop_back();
+
+  assert(
+    utility::sizes_match(
+      ship_bodies,
+      projectile_bodies,
+      tl_xs,
+      tl_ys,
+      armor,
+      refracts,
+      atk_spds,
+      effects
+    )
+  );
 }
 } // namespace tty_invaders::entities

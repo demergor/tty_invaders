@@ -1,5 +1,6 @@
 #include "tty_invaders/entities/projectiles.h"
 
+#include <cassert>
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
@@ -8,6 +9,7 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/rendering/term_dims.h"
+#include "tty_invaders/utility/containers.h"
 
 namespace tty_invaders::entities {
 void Projectiles::update(
@@ -34,6 +36,8 @@ void Projectiles::add(
   bodies.emplace_back(body);
   types.emplace_back(type);
   effects.emplace_back(effect);
+
+  assert(utility::sizes_match(xs, ys, x_vels, y_vels, bodies, types, effects));
 }
 
 void Projectiles::clear() {
@@ -44,6 +48,8 @@ void Projectiles::clear() {
   bodies.clear();
   types.clear();
   effects.clear();
+
+  assert(utility::sizes_match(xs, ys, x_vels, y_vels, bodies, types, effects));
 }
 
 void Projectiles::move(const rendering::TermDims& bounds) {
@@ -66,6 +72,8 @@ void Projectiles::move(const rendering::TermDims& bounds) {
 
     ++idx;
   }
+
+  assert(utility::sizes_match(xs, ys, x_vels, y_vels, bodies, types, effects));
 }
 
 // TODO: Write test

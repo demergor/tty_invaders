@@ -35,7 +35,7 @@ int main() {
   defender.tl_x = static_cast<int>(bounds.width / 2);
   defender.tl_y = static_cast<int>(bounds.main_height - bounds.bar_height - 1)
     - (defender.body->br_y);
-  defender.effect = tty_invaders::effects::StatusEffect::None;
+  defender.effect = tty_invaders::effects::StatusEffect::DoubleAtkSpd;
 
   entities::Invaders invaders {
     std::vector(2, &entities::templates::fighter),

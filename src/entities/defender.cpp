@@ -12,7 +12,6 @@
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectiles.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
-#include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/io/ctrls/arrow_direction.h"
 #include "tty_invaders/io/key_press.h"
 #include "tty_invaders/opts/game_settings.h"
@@ -67,22 +66,11 @@ void Defender::move(
     }
   }
 
-  geometry::RectCoords bounding_box {
-    .tl_x = static_cast<std::size_t>(
-      std::clamp(tl_x + x_vel, 0, static_cast<int>(bounds.width) + 1)
-    ),
-    .tl_y = static_cast<std::size_t>(
-      std::clamp(tl_y + y_vel, 0, static_cast<int>(bounds.width) + 1)
-    ),
-    .br_x = static_cast<std::size_t>(
-      std::clamp(tl_x + body->br_x + x_vel, 0, static_cast<int>(bounds.width) + 1)
-    ),
-    .br_y = static_cast<std::size_t>(
-      std::clamp(tl_y + body->br_y + y_vel, 0, static_cast<int>(bounds.width) + 1)
-    ),
-  };
-
-  if (bounding_box.empty()) {
+  if (
+    std::cmp_greater_equal(tl_x + x_vel, bounds.width)
+    || std::cmp_greater_equal(tl_y + y_vel, bounds.main_height)
+    || tl_x + body->br_x + x_vel < 0 || tl_y + body->br_y + y_vel < 0
+  ) {
     return;
   }
 
