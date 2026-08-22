@@ -3,14 +3,12 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
 
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/gameplay/collision_handler.h"
-#include "tty_invaders/io/term.h"
 #include "tty_invaders/rendering/term_dims.h"
 #include "tty_invaders/utility/containers.h"
 
