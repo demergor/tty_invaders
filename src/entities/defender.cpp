@@ -12,6 +12,7 @@
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectiles.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/point.h"
 #include "tty_invaders/io/ctrls/arrow_direction.h"
 #include "tty_invaders/io/key_press.h"
 #include "tty_invaders/opts/game_settings.h"
@@ -66,16 +67,27 @@ void Defender::move(
     }
   }
 
+  int offset_tl_x {tl_x + x_vel};
+  int offset_tl_y {tl_y + y_vel};
+  int offset_br_x {offset_tl_x + body->br_x};
+  int offset_br_y {offset_tl_y + body->br_y};
+
   if (
-    std::cmp_greater_equal(tl_x + x_vel, bounds.width)
-    || std::cmp_greater_equal(tl_y + y_vel, bounds.main_height)
-    || tl_x + body->br_x + x_vel < 0 || tl_y + body->br_y + y_vel < 0
+    std::cmp_greater_equal(offset_tl_x, bounds.width) || offset_br_x < 0
+    || std::cmp_greater_equal(offset_tl_y, bounds.main_height) || offset_br_y < 0
   ) {
     return;
   }
 
   if (
-    cb.area_contains(tl_x, tl_y, body->hitbox_pos, EntityType::Invader, true, bounds)
+    cb.area_contains(
+      offset_tl_x,
+      offset_tl_y,
+      body->hitbox_pos,
+      EntityType::Invader | EntityType::InvaderBoss,
+      true,
+      bounds
+    )
   ) {
     return;
   }
@@ -93,16 +105,23 @@ void Defender::update(
   populate_projectiles(projectiles);
 }
 
-void Defender::cleanup(std::chrono::milliseconds delta_time) {
+void Defender::cleanup(Projectiles& projectiles, std::chrono::milliseconds delta_time) {
   if (armor < 0) {
     --lives;
     armor = opts::game_settings::defender_armor;
   }
 
-  effect_duration = std::min(effect_duration, delta_time);
+  effects::StatusEffect prev_effect {effect};
+  effect_duration -= std::min(effect_duration, delta_time);
   effect = (effect_duration == std::chrono::milliseconds {0})
-    ? effect
-    : effects::StatusEffect::None;
+    ? effects::StatusEffect::None
+    : effect;
+
+  if (
+    prev_effect == effects::StatusEffect::Laser && effect == effects::StatusEffect::None
+  ) {
+    projectiles.remove(effects::StatusEffect::Laser);
+  }
 }
 
 void Defender::populate_coll_buf(
@@ -130,25 +149,83 @@ void Defender::populate_coll_buf(
   }
 }
 
+// TODO: Review this for complexity/readability
 void Defender::populate_projectiles(Projectiles& projectiles) {
-  if (++refract <= atk_spd) {
+  static struct StateSnapshot {
+    int tl_x;
+    int tl_y;
+    bool was_laser;
+  } last_tick {tl_x, tl_y, false};
+
+  bool leave_laser {
+    last_tick.was_laser && tl_x == last_tick.tl_x && last_tick.tl_y == tl_y
+  };
+
+  int cur_atk_spd {atk_spd};
+  switch (effect) {
+    case effects::StatusEffect::DoubleAtkSpd: cur_atk_spd /= 2; break;
+    case effects::StatusEffect::Laser: cur_atk_spd = -1; break;
+    default: break;
+  }
+
+  if (++refract <= cur_atk_spd) {
     return;
+  }
+
+  if ((effect != effects::StatusEffect::Laser && last_tick.was_laser) || !leave_laser) {
+    projectiles.remove(effects::StatusEffect::Laser);
   }
 
   refract = 0;
   for (const auto& idx : body->cannon_pos) {
-    projectiles.add(
-      body->hitbox_pos[idx].x,
-      body->hitbox_pos[idx].y,
-      0,
-      -1,
-      &templates::bullet,
-      EntityType::DefenderBullet,
-      effects::CollisionEffect {
-        .type = effects::CollisionEffect::Effect::Damage,
-        .val = opts::game_settings::defender_atk_dmg
-      }
-    );
+    geometry::Point cannon_point {body->hitbox_pos[idx]};
+    int cannon_x {tl_x + cannon_point.x};
+    int cannon_y {tl_y + cannon_point.y};
+
+    if (effect != effects::StatusEffect::Laser) {
+      projectiles.add(
+        cannon_x,
+        cannon_y,
+        0,
+        -1,
+        &templates::bullet,
+        EntityType::DefenderBullet,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Damage,
+          .val = opts::game_settings::defender_atk_dmg
+            * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
+        },
+        effect
+      );
+
+      last_tick.was_laser = false;
+      continue;
+    }
+
+    if (leave_laser) {
+      continue;
+    }
+
+    while (--cannon_y >= 0) {
+      projectiles.add(
+        cannon_x,
+        cannon_y,
+        0,
+        0,
+        &templates::bullet,
+        EntityType::DefenderBullet,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Damage,
+          .val = opts::game_settings::defender_atk_dmg
+            * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
+        },
+        effect
+      );
+    }
   }
+
+  last_tick.tl_x = tl_x;
+  last_tick.tl_y = tl_y;
+  last_tick.was_laser = effect == effects::StatusEffect::Laser;
 }
 } // namespace tty_invaders::entities

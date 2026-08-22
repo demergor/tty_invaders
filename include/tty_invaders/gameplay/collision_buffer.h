@@ -19,7 +19,7 @@ namespace tty_invaders::gameplay {
 struct CollisionBuffer {
   explicit CollisionBuffer(const rendering::TermDims&);
 
-  void dispatch_collisions(CollisionHandler&, const entities::Projectiles&) const;
+  void dispatch_collisions(CollisionHandler&, entities::Projectiles&);
   bool area_contains(
     const int tl_x,
     const int tl_y,
@@ -36,6 +36,11 @@ struct CollisionBuffer {
   std::vector<std::size_t> invader_bullet_ids;
   std::vector<std::size_t> defender_bullet_ids;
   std::vector<std::size_t> power_up_ids;
+  std::vector<std::size_t> proj_rm;
+
+private:
+  bool sizes_match() const;
+  void remove_projectiles(entities::Projectiles&);
 };
 } // namespace tty_invaders::gameplay
 

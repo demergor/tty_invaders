@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectile_body.h"
@@ -155,7 +156,8 @@ void Invaders::populate_projectiles(Projectiles& projectiles) {
         effects::CollisionEffect {
           .type = effects::CollisionEffect::Effect::Damage,
           .val = opts::game_settings::invader_atk_dmg
-        }
+        },
+        effects::StatusEffect::None
       );
     }
   }

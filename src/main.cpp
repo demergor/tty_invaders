@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <chrono>
+#include <iostream>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -11,6 +13,7 @@
 #include "tty_invaders/entities/templates/projectiles.h"
 #include "tty_invaders/entities/templates/ships.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/io/io.h"
 #include "tty_invaders/io/key_press.h"
 #include "tty_invaders/io/raw_term.h"
@@ -25,6 +28,7 @@ int main() {
   io::RawTerm raw_term {};
   rendering::TermDims bounds {};
   gameplay::CollisionBuffer cb {bounds};
+  gameplay::CollisionHandler ch;
   entities::Defender defender {
     &entities::templates::fighter,
     opts::game_settings::defender_armor,
@@ -35,14 +39,14 @@ int main() {
   defender.tl_x = static_cast<int>(bounds.width / 2);
   defender.tl_y = static_cast<int>(bounds.main_height - bounds.bar_height - 1)
     - (defender.body->br_y);
-  defender.effect = tty_invaders::effects::StatusEffect::DoubleAtkSpd;
+  defender.effect = tty_invaders::effects::StatusEffect::None;
 
   entities::Invaders invaders {
     std::vector(2, &entities::templates::fighter),
     std::vector(2, &entities::templates::bullet),
     std::vector {10, 20},
     std::vector(2, 0),
-    std::vector(2, 1),
+    std::vector(2, 100),
     std::vector(2, 10),
     std::vector(2, effects::StatusEffect::None)
   };
@@ -60,7 +64,9 @@ int main() {
   defender.update(cb, projectiles, bounds);
   invaders.update(cb, projectiles, bounds);
   projectiles.update(cb, bounds);
-  defender.cleanup(opts::game_settings::tick_rate);
+  cb.dispatch_collisions(ch, projectiles);
+  ch.handle_collisions(defender, invaders);
+  defender.cleanup(projectiles, opts::game_settings::tick_rate);
   invaders.cleanup();
   rendering::render_main(cb, bounds);
   rendering::render_bar(defender, bounds);
@@ -82,7 +88,9 @@ int main() {
       defender.update(cb, projectiles, bounds);
       invaders.update(cb, projectiles, bounds);
       projectiles.update(cb, bounds);
-      defender.cleanup(opts::game_settings::tick_rate);
+      cb.dispatch_collisions(ch, projectiles);
+      ch.handle_collisions(defender, invaders);
+      defender.cleanup(projectiles, opts::game_settings::tick_rate);
       invaders.cleanup();
       time_diff -= opts::game_settings::tick_rate;
       updated = true;
@@ -94,6 +102,7 @@ int main() {
       rendering::render_bar(defender, bounds);
       std::swap(cb.front_types, cb.back_types);
       cb.clear_back();
+      std::cout.flush();
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds {1});

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/templates/projectile_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
@@ -20,9 +21,11 @@ struct Projectiles {
     const int y_vel,
     const templates::ProjectileBody* body,
     const EntityType& owner,
-    const effects::CollisionEffect& effect
+    const effects::CollisionEffect& collision_effect,
+    const effects::StatusEffect& status_effect
   );
-  void remove(const std::size_t idx);
+  void remove(std::size_t idx);
+  void remove(effects::StatusEffect);
   void clear();
 
   std::vector<int> xs;
@@ -31,11 +34,13 @@ struct Projectiles {
   std::vector<int> y_vels;
   std::vector<const templates::ProjectileBody*> bodies;
   std::vector<EntityType> types;
-  std::vector<effects::CollisionEffect> effects;
+  std::vector<effects::CollisionEffect> collision_effects;
+  std::vector<effects::StatusEffect> status_effects;
 
 private:
   void move(const rendering::TermDims&);
   void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&);
+  bool vec_sizes_match() const;
 };
 } // namespace tty_invaders::entities
 

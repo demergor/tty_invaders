@@ -1,6 +1,7 @@
 #include "tty_invaders/rendering/render_attr.h"
 
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/rendering/formatting.h"
 
 namespace tty_invaders::rendering {
 RenderAttr::RenderAttr(entities::EntityType type) {
@@ -12,6 +13,10 @@ RenderAttr::RenderAttr(entities::EntityType type) {
     case entities::EntityType::DefenderBullet:
       formatting = Formatting::Green;
       ch = 'o';
+      break;
+    case entities::EntityType::Explosion:
+      formatting = Formatting::BgRed;
+      ch = ' ';
       break;
     case entities::EntityType::Invader:
       formatting = Formatting::None;

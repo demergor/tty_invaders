@@ -1,0 +1,2318 @@
+#include <utility>
+
+#include "tty_invaders/io/key_press.h"
+
+namespace tty_invaders::io {
+bool KeyPress::operator==(const KeyPress& other) {
+  if (type != other.type) {
+    return false;
+  }
+
+  switch (type) {
+    case Type::None: return true;
+    case Type::Arrow: return arrow == other.arrow;
+    case Type::Char: return ch == other.ch;
+    default: std::unreachable();
+  }
+}
+} // namespace tty_invaders::io
+#include "tty_invaders/io/raw_term.h"
+
+#include <unistd.h>
+
+#include <iostream>
+#include <termios.h>
+
+#include "tty_invaders/io/term.h"
+
+namespace tty_invaders::io {
+RawTerm::RawTerm() {
+  tcgetattr(STDIN_FILENO, &og_termios);
+  termios raw {og_termios};
+
+  raw.c_lflag &= ~static_cast<tcflag_t>(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+
+  std::cout << term::hide_cursor << term::enter_alternate_screen;
+}
+
+RawTerm::~RawTerm() {
+  tcsetattr(STDIN_FILENO, TCSANOW, &og_termios);
+  std::cout << term::show_cursor << term::leave_alternate_screen;
+}
+} // namespace tty_invaders::io
+#include "tty_invaders/io/io.h"
+
+#include <sys/poll.h>
+#include <unistd.h>
+
+#include <vector>
+
+namespace tty_invaders::io {
+namespace {
+bool read_byte(char& out) {
+  pollfd pfd {.fd = STDIN_FILENO, .events = POLLIN, .revents = 0};
+  return poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)
+    && read(STDIN_FILENO, &out, 1) == 1;
+}
+} // namespace
+
+KeyPress key_pressed() {
+  char ch {};
+  std::vector<char> bytes;
+
+  while (read_byte(ch)) {
+    bytes.emplace_back(ch);
+  }
+
+  if (bytes.empty()) {
+    return KeyPress {.type = KeyPress::Type::None};
+  }
+
+  if (
+    bytes.size() < 3 || bytes[bytes.size() - 3] != '\x1b'
+    || bytes[bytes.size() - 2] != '['
+  ) {
+    return KeyPress {
+      .type = KeyPress::Type::Char,
+      .ch = static_cast<unsigned char>(bytes.back())
+    };
+  }
+
+  switch (bytes[bytes.size() - 1]) {
+    case 'A':
+      return KeyPress {
+        .type = KeyPress::Type::Arrow,
+        .arrow = ctrls::ArrowDirection::Up
+      };
+    case 'B':
+      return KeyPress {
+        .type = KeyPress::Type::Arrow,
+        .arrow = ctrls::ArrowDirection::Down
+      };
+    case 'C':
+      return KeyPress {
+        .type = KeyPress::Type::Arrow,
+        .arrow = ctrls::ArrowDirection::Right
+      };
+    case 'D':
+      return KeyPress {
+        .type = KeyPress::Type::Arrow,
+        .arrow = ctrls::ArrowDirection::Left
+      };
+    default: return KeyPress {.type = KeyPress::Type::None};
+  }
+}
+} // namespace tty_invaders::io
+#include "tty_invaders/entities/invaders.h"
+
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <stdexcept>
+
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
+#include "tty_invaders/entities/templates/ship_body.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/term_dims.h"
+#include "tty_invaders/utility/containers.h"
+
+namespace tty_invaders::entities {
+Invaders::Invaders(
+  const std::vector<const templates::ShipBody*>& ship_bodies,
+  const std::vector<const templates::ProjectileBody*>& projectile_bodies,
+  const std::vector<int>& tl_xs,
+  const std::vector<int>& tl_ys,
+  const std::vector<int>& armor,
+  const std::vector<int>& atk_spds,
+  const std::vector<effects::StatusEffect> effects
+)
+    : ship_bodies {ship_bodies}
+    , projectile_bodies {projectile_bodies}
+    , tl_xs {tl_xs}
+    , tl_ys {tl_ys}
+    , armor {armor}
+    , refracts {std::vector(ship_bodies.size(), 0)}
+    , atk_spds {atk_spds}
+    , effects {effects} {
+  if (tl_xs.size() != tl_ys.size()) {
+    throw std::runtime_error(
+      "Error initializing invaders: "
+      "Amount of x-coordinates doesn't match amount of y-coordinates!"
+    );
+  }
+
+  auto is_negative {[](const int val) {
+    return val < 0;
+  }};
+  if (std::find_if(armor.begin(), armor.end(), is_negative) != armor.end()) {
+    throw std::runtime_error(
+      "Error initializing invaders: Armor-vector contains negative values!"
+    );
+  }
+
+  if (std::find_if(atk_spds.begin(), atk_spds.end(), is_negative) != atk_spds.end()) {
+    throw std::runtime_error(
+      "Error initializing invaders: Attack-speeds-vector contains negative values!"
+    );
+  }
+
+  if (
+    std::find_if(
+      armor.begin(),
+      armor.end(),
+      [](const int val) {
+        return val <= 0;
+      }
+    )
+    != armor.end()
+  ) {
+    throw std::runtime_error(
+      "Error initializing invaders: Lives-vector contains values < 1!"
+    );
+  }
+
+  assert(
+    utility::sizes_match(
+      ship_bodies,
+      projectile_bodies,
+      tl_xs,
+      tl_ys,
+      armor,
+      refracts,
+      atk_spds,
+      effects
+    )
+  );
+}
+
+void Invaders::update(
+  gameplay::CollisionBuffer& cb,
+  Projectiles& projectiles,
+  const rendering::TermDims& bounds
+) {
+  move(bounds);
+  populate_collision_buffer(cb, bounds);
+  populate_projectiles(projectiles);
+}
+
+void Invaders::cleanup() {
+  std::size_t idx {0};
+  while (idx < armor.size()) {
+    if (armor[idx] <= 0) {
+      remove(idx);
+    } else {
+      ++idx;
+    }
+  }
+}
+
+// TODO: Implement
+void Invaders::move(const rendering::TermDims& bounds) {
+  return;
+}
+
+void Invaders::populate_collision_buffer(
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
+) const {
+  for (std::size_t i {0}; i < tl_xs.size(); ++i) {
+    for (const auto& [x_offset, y_offset] : ship_bodies[i]->hitbox_pos) {
+      int hitbox_x {tl_xs[i] + x_offset};
+      int hitbox_y {tl_ys[i] + y_offset};
+
+      if (hitbox_x < 0 || hitbox_y < 0) {
+        continue;
+      }
+
+      const auto grid_x {static_cast<std::size_t>(hitbox_x)};
+      const auto grid_y {static_cast<std::size_t>(hitbox_y)};
+
+      if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
+        continue;
+      }
+
+      std::size_t cb_idx {grid_y * bounds.width + grid_x};
+      cb.back_types[cb_idx] = EntityType::Invader;
+      cb.ship_ids[cb_idx] = i;
+    }
+  }
+}
+
+void Invaders::populate_projectiles(Projectiles& projectiles) {
+  for (std::size_t i {0}; i < tl_xs.size(); ++i) {
+    if (++refracts[i] <= atk_spds[i]) {
+      continue;
+    }
+
+    refracts[i] = 0;
+    for (const auto& idx : ship_bodies[i]->cannon_pos) {
+      projectiles.add(
+        tl_xs[i] + ship_bodies[i]->hitbox_pos[idx].x,
+        tl_ys[i] + ship_bodies[i]->hitbox_pos[idx].y,
+        0,
+        1,
+        projectile_bodies[i],
+        EntityType::InvaderBullet,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Damage,
+          .val = opts::game_settings::invader_atk_dmg
+        },
+        effects::StatusEffect::None
+      );
+    }
+  }
+}
+
+void Invaders::remove(const std::size_t idx) {
+  if (idx >= ship_bodies.size()) {
+    throw std::runtime_error(
+      "Error removing invader: Index is out of bounds!\nIndex: " + std::to_string(idx)
+      + "\nSize: " + std::to_string(ship_bodies.size())
+    );
+  }
+
+  ship_bodies[idx] = ship_bodies.back();
+  ship_bodies.pop_back();
+
+  projectile_bodies[idx] = projectile_bodies.back();
+  projectile_bodies.pop_back();
+
+  tl_xs[idx] = tl_xs.back();
+  tl_xs.pop_back();
+
+  tl_ys[idx] = tl_ys.back();
+  tl_ys.pop_back();
+
+  armor[idx] = armor.back();
+  armor.pop_back();
+
+  refracts[idx] = refracts.back();
+  refracts.pop_back();
+
+  atk_spds[idx] = atk_spds.back();
+  atk_spds.pop_back();
+
+  effects[idx] = effects.back();
+  effects.pop_back();
+
+  assert(
+    utility::sizes_match(
+      ship_bodies,
+      projectile_bodies,
+      tl_xs,
+      tl_ys,
+      armor,
+      refracts,
+      atk_spds,
+      effects
+    )
+  );
+}
+} // namespace tty_invaders::entities
+#include "tty_invaders/entities/entity_type.h"
+
+#include <utility>
+
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/utility/mask.h"
+
+namespace tty_invaders::entities {
+// TODO: Test
+EntityType dominant_type(EntityType type) {
+  for (const auto entity_type : opts::game_settings::entity_type_priority) {
+    if (utility::mask::is_subset(entity_type, type)) {
+      return entity_type;
+    }
+  }
+
+  std::unreachable();
+}
+} // namespace tty_invaders::entities
+#include "tty_invaders/entities/projectiles.h"
+
+#include <cassert>
+#include <cstddef>
+#include <stdexcept>
+#include <utility>
+
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/rendering/term_dims.h"
+#include "tty_invaders/utility/containers.h"
+
+namespace tty_invaders::entities {
+void Projectiles::update(
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
+) {
+  move(bounds);
+  populate_coll_buf(cb, bounds);
+}
+
+void Projectiles::add(
+  const int x,
+  const int y,
+  const int x_vel,
+  const int y_vel,
+  const templates::ProjectileBody* body,
+  const EntityType& type,
+  const effects::CollisionEffect& collision_effect,
+  const effects::StatusEffect& status_effect
+) {
+  xs.emplace_back(x);
+  ys.emplace_back(y);
+  x_vels.emplace_back(x_vel);
+  y_vels.emplace_back(y_vel);
+  bodies.emplace_back(body);
+  types.emplace_back(type);
+  collision_effects.emplace_back(collision_effect);
+  status_effects.emplace_back(status_effect);
+
+  assert(vec_sizes_match());
+}
+
+void Projectiles::clear() {
+  xs.clear();
+  ys.clear();
+  x_vels.clear();
+  y_vels.clear();
+  bodies.clear();
+  types.clear();
+  collision_effects.clear();
+  status_effects.clear();
+
+  assert(vec_sizes_match());
+}
+
+void Projectiles::move(const rendering::TermDims& bounds) {
+  const auto width {static_cast<int>(bounds.width)};
+  const auto height {static_cast<int>(bounds.main_height)};
+  std::size_t idx {0};
+
+  while (idx < xs.size()) {
+    xs[idx] += x_vels[idx];
+    if (xs[idx] >= width || xs[idx] < 0) {
+      remove(idx);
+      continue;
+    }
+
+    ys[idx] += y_vels[idx];
+    if (ys[idx] >= height || ys[idx] < 0) {
+      remove(idx);
+      continue;
+    }
+
+    ++idx;
+  }
+
+  assert(vec_sizes_match());
+}
+
+void Projectiles::remove(effects::StatusEffect effect) {
+  std::size_t idx {0};
+  while (idx < status_effects.size()) {
+    if (status_effects[idx] == effect) {
+      remove(idx);
+    } else {
+      ++idx;
+    }
+  }
+
+  assert(vec_sizes_match());
+}
+
+void Projectiles::remove(std::size_t idx) {
+  if (idx >= xs.size()) {
+    throw std::runtime_error(
+      "Error removing projectile: Index is out of bounds!\nIndex: "
+      + std::to_string(idx) + "\nSize: " + std::to_string(xs.size())
+    );
+  }
+
+  xs[idx] = xs.back();
+  xs.pop_back();
+
+  ys[idx] = ys.back();
+  ys.pop_back();
+
+  x_vels[idx] = x_vels.back();
+  x_vels.pop_back();
+
+  y_vels[idx] = y_vels.back();
+  y_vels.pop_back();
+
+  bodies[idx] = bodies.back();
+  bodies.pop_back();
+
+  types[idx] = types.back();
+  types.pop_back();
+
+  collision_effects[idx] = collision_effects.back();
+  collision_effects.pop_back();
+
+  status_effects[idx] = status_effects.back();
+  status_effects.pop_back();
+}
+
+// TODO: Write test
+void Projectiles::populate_coll_buf(
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
+) {
+  for (std::size_t i {0}; i < xs.size(); ++i) {
+    const auto grid_x {static_cast<std::size_t>(xs[i])};
+    const auto grid_y {static_cast<std::size_t>(ys[i])};
+    std::size_t cb_idx {grid_y * bounds.width + grid_x};
+    cb.back_types[cb_idx] |= types[i];
+
+    switch (types[i]) {
+      case EntityType::DefenderBullet: cb.defender_bullet_ids[cb_idx] = i; break;
+      case EntityType::InvaderBullet: cb.invader_bullet_ids[cb_idx] = i; break;
+      case EntityType::PowerUp: cb.power_up_ids[cb_idx] = i; break;
+      default: std::unreachable();
+    }
+  }
+}
+
+bool Projectiles::vec_sizes_match() const {
+  return utility::sizes_match(
+    xs,
+    ys,
+    x_vels,
+    y_vels,
+    bodies,
+    types,
+    collision_effects,
+    status_effects
+  );
+}
+} // namespace tty_invaders::entities
+#include "tty_invaders/entities/defender.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cstddef>
+#include <stdexcept>
+#include <utility>
+
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectiles.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/point.h"
+#include "tty_invaders/io/ctrls/arrow_direction.h"
+#include "tty_invaders/io/key_press.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+Defender::Defender(
+  const templates::ShipBody* body,
+  const int armor,
+  const int lives,
+  const int atk_spd
+)
+    : body {body}
+    , armor {armor}
+    , lives {lives}
+    , atk_spd {atk_spd} {
+  if (lives <= 0) {
+    throw std::runtime_error(
+      "Error initializing defender: "
+      "Amount of lives must be greater 0!"
+    );
+  }
+}
+
+void Defender::move(
+  const io::KeyPress& kp,
+  const gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
+) {
+  if (kp.type == io::KeyPress::Type::None) {
+    return;
+  }
+
+  int x_vel {0};
+  int y_vel {0};
+
+  if (kp.type == io::KeyPress::Type::Arrow) {
+    switch (kp.arrow) {
+      case io::ctrls::ArrowDirection::Up: y_vel = -1; break;
+      case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
+      case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
+      case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
+      default: std::unreachable();
+    }
+  } else {
+    switch (kp.ch) {
+      case opts::game_settings::movement::up: y_vel = -1; break;
+      case opts::game_settings::movement::down: y_vel = 1; break;
+      case opts::game_settings::movement::right: x_vel = 1; break;
+      case opts::game_settings::movement::left: x_vel = -1; break;
+      default: return;
+    }
+  }
+
+  int offset_tl_x {tl_x + x_vel};
+  int offset_tl_y {tl_y + y_vel};
+  int offset_br_x {offset_tl_x + body->br_x};
+  int offset_br_y {offset_tl_y + body->br_y};
+
+  if (
+    std::cmp_greater_equal(offset_tl_x, bounds.width) || offset_br_x < 0
+    || std::cmp_greater_equal(offset_tl_y, bounds.main_height) || offset_br_y < 0
+  ) {
+    return;
+  }
+
+  if (
+    cb.area_contains(
+      offset_tl_x,
+      offset_tl_y,
+      body->hitbox_pos,
+      EntityType::Invader | EntityType::InvaderBoss,
+      true,
+      bounds
+    )
+  ) {
+    return;
+  }
+
+  tl_x += x_vel;
+  tl_y += y_vel;
+}
+
+void Defender::update(
+  gameplay::CollisionBuffer& cb,
+  Projectiles& projectiles,
+  const rendering::TermDims& bounds
+) {
+  populate_coll_buf(cb, bounds);
+  populate_projectiles(projectiles);
+}
+
+void Defender::cleanup(Projectiles& projectiles, std::chrono::milliseconds delta_time) {
+  if (armor < 0) {
+    --lives;
+    armor = opts::game_settings::defender_armor;
+  }
+
+  effects::StatusEffect prev_effect {effect};
+  effect_duration -= std::min(effect_duration, delta_time);
+  effect = (effect_duration == std::chrono::milliseconds {0})
+    ? effects::StatusEffect::None
+    : effect;
+
+  if (
+    prev_effect == effects::StatusEffect::Laser && effect == effects::StatusEffect::None
+  ) {
+    projectiles.remove(effects::StatusEffect::Laser);
+  }
+}
+
+void Defender::populate_coll_buf(
+  gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
+) const {
+  for (const auto& [x_offset, y_offset] : body->hitbox_pos) {
+    int hitbox_x {tl_x + x_offset};
+    int hitbox_y {tl_y + y_offset};
+
+    if (hitbox_x < 0 || hitbox_y < 0) {
+      continue;
+    }
+
+    const auto grid_x {static_cast<std::size_t>(hitbox_x)};
+    const auto grid_y {static_cast<std::size_t>(hitbox_y)};
+
+    if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
+      continue;
+    }
+
+    const std::size_t cb_idx {grid_y * bounds.width + grid_x};
+    cb.back_types[cb_idx] = EntityType::Defender;
+    cb.ship_ids[cb_idx] = 0;
+  }
+}
+
+// TODO: Review this for complexity/readability
+void Defender::populate_projectiles(Projectiles& projectiles) {
+  static struct StateSnapshot {
+    int tl_x;
+    int tl_y;
+    bool was_laser;
+  } last_tick {tl_x, tl_y, false};
+
+  bool leave_laser {
+    last_tick.was_laser && tl_x == last_tick.tl_x && last_tick.tl_y == tl_y
+  };
+
+  int cur_atk_spd {atk_spd};
+  switch (effect) {
+    case effects::StatusEffect::DoubleAtkSpd: cur_atk_spd /= 2; break;
+    case effects::StatusEffect::Laser: cur_atk_spd = -1; break;
+    default: break;
+  }
+
+  if (++refract <= cur_atk_spd) {
+    return;
+  }
+
+  if ((effect != effects::StatusEffect::Laser && last_tick.was_laser) || !leave_laser) {
+    projectiles.remove(effects::StatusEffect::Laser);
+  }
+
+  refract = 0;
+  for (const auto& idx : body->cannon_pos) {
+    geometry::Point cannon_point {body->hitbox_pos[idx]};
+    int cannon_x {tl_x + cannon_point.x};
+    int cannon_y {tl_y + cannon_point.y};
+
+    if (effect != effects::StatusEffect::Laser) {
+      projectiles.add(
+        cannon_x,
+        cannon_y,
+        0,
+        -1,
+        &templates::bullet,
+        EntityType::DefenderBullet,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Damage,
+          .val = opts::game_settings::defender_atk_dmg
+            * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
+        },
+        effect
+      );
+
+      last_tick.was_laser = false;
+      continue;
+    }
+
+    if (false && leave_laser) {
+      continue;
+    }
+
+    while (--cannon_y >= 0) {
+      projectiles.add(
+        cannon_x,
+        cannon_y,
+        0,
+        0,
+        &templates::bullet,
+        EntityType::DefenderBullet,
+        effects::CollisionEffect {
+          .type = effects::CollisionEffect::Effect::Damage,
+          .val = opts::game_settings::defender_atk_dmg
+            * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
+        },
+        effect
+      );
+    }
+  }
+
+  last_tick.tl_x = tl_x;
+  last_tick.tl_y = tl_y;
+  last_tick.was_laser = effect == effects::StatusEffect::Laser;
+}
+} // namespace tty_invaders::entities
+#include "tty_invaders/entities/templates/projectiles.h"
+
+namespace tty_invaders::entities::templates {
+const ProjectileBody bullet {
+  .points {{0, 0}}, //
+  .tl {0, 0},
+  .br {0, 0}
+};
+
+const ProjectileBody power_up {
+  .points {
+    {0, 0}, //
+    {-1, 1},
+    {0, 1},
+    {1, 1},
+    {0, 2}
+  },
+  .tl {-1, 0},
+  .br {1, 2}
+};
+
+const ProjectileBody rocket {
+  .points {
+    {-1, 0}, //
+    {0, 0},
+    {1, 0},
+    {-1, 1},
+    {0, 1},
+    {1, 1},
+    {1, 2},
+    {-1, 3},
+    {0, 3},
+    {1, 3}
+  },
+  .tl {-1, 0},
+  .br {1, 3}
+};
+} // namespace tty_invaders::entities::templates
+#include "tty_invaders/entities/templates/ships.h"
+
+namespace tty_invaders::entities::templates {
+const ShipBody destroyer {
+  .hitbox_pos {
+    {2, 0},
+    {0, 1},
+    {2, 1},
+    {4, 1},
+    {0, 2},
+    {1, 2},
+    {2, 2},
+    {3, 2},
+    {4, 2},
+    {1, 3},
+    {2, 3},
+    {3, 3},
+    {0, 4},
+    {1, 4},
+    {2, 4},
+    {3, 4},
+    {2, 5}
+  },
+  .cannon_pos {0, 1, 3},
+  .br_x = 4,
+  .br_y = 5
+};
+
+const ShipBody fighter {
+  .hitbox_pos {
+    {1, 0},
+    {2, 0},
+    {3, 0},
+    {0, 1},
+    {1, 1},
+    {2, 1},
+    {3, 1},
+    {4, 1},
+    {0, 2},
+    {2, 2},
+    {4, 2}
+  },
+  .cannon_pos {0, 1, 2},
+  .br_x = 4,
+  .br_y = 2
+};
+
+// TODO: Define (more)
+/*
+ * const ShipBody invader {
+ * .hitbox_pos {
+ * },
+ * .cannon_pos {0, 1, 2},
+ * .br_x
+ * };
+ */
+
+const ShipBody speeder {
+  .hitbox_pos {
+    {1, 0}, //
+    {0, 1},
+    {1, 1},
+    {2, 1},
+    {0, 2},
+    {2, 2}
+  },
+  .cannon_pos {0},
+  .br_x = 2,
+  .br_y = 2
+};
+} // namespace tty_invaders::entities::templates
+#include "tty_invaders/geometry/rect_coords.h"
+
+namespace tty_invaders::geometry {
+bool RectCoords::empty() const {
+  return tl_x >= br_x || tl_y >= br_y;
+}
+} // namespace tty_invaders::geometry
+#include <random>
+
+#include "tty_invaders/random/random.h"
+
+namespace tty_invaders::random {
+} // namespace tty_invaders::random
+#include "tty_invaders/gameplay/collision_handler.h"
+
+#include <cassert>
+
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/defender.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/invaders.h"
+#include "tty_invaders/opts/game_settings.h"
+
+namespace tty_invaders::gameplay {
+void CollisionHandler::handle_collisions(
+  entities::Defender& defender,
+  entities::Invaders& invaders
+) {
+  for (const auto& collision : collisions) {
+    if (
+      entities::intersects(
+        collision.target,
+        entities::EntityType::Invader | entities::EntityType::InvaderBoss
+      )
+    ) {
+      if (collision.effect.type != effects::CollisionEffect::Effect::Damage) {
+        assert(false && "Invader mustn't be affected by anything other than damage!");
+        continue;
+      }
+
+      invaders.armor[collision.target_id] -= collision.effect.val;
+      continue;
+    }
+
+    if (collision.target != entities::EntityType::Defender) {
+      assert(false && "CollisionData mustn't have a non-entity target!");
+      continue;
+    }
+
+    switch (collision.effect.type) {
+      case effects::CollisionEffect::Effect::Damage: {
+        if (defender.effect == effects::StatusEffect::Invincible) {
+          break;
+        }
+        defender.armor -= collision.effect.val;
+        break;
+      }
+      case effects::CollisionEffect::Effect::Heal:
+        defender.lives += collision.effect.val;
+        break;
+      case effects::CollisionEffect::Effect::Armor:
+        defender.armor += collision.effect.val;
+        break;
+      case effects::CollisionEffect::Effect::PowerUp:
+        defender.effect = static_cast<effects::StatusEffect>(collision.effect.val);
+        defender.effect_duration = opts::game_settings::status_effect_duration;
+        break;
+    }
+  }
+
+  collisions.clear();
+}
+} // namespace tty_invaders::gameplay
+#include "tty_invaders/gameplay/collision_buffer.h"
+
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <iostream>
+#include <stdexcept>
+
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/gameplay/collision_handler.h"
+#include "tty_invaders/io/term.h"
+#include "tty_invaders/rendering/term_dims.h"
+#include "tty_invaders/utility/containers.h"
+
+namespace tty_invaders::gameplay {
+CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
+    : front_types {std::vector<entities::EntityType>(
+        td.main_height * td.width,
+        entities::EntityType::None
+      )}
+    , back_types {std::vector<entities::EntityType>(
+        td.main_height * td.width,
+        entities::EntityType::None
+      )}
+    , ship_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+    , invader_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+    , defender_bullet_ids {std::vector<std::size_t>(td.main_height * td.width, 0)}
+    , power_up_ids {std::vector<std::size_t>(td.main_height * td.width, 0)} {
+  assert(
+    front_types.size() == back_types.size() && front_types.size() == ship_ids.size()
+  );
+
+  if (front_types.empty()) {
+    throw std::runtime_error(
+      "Error initializing collision buffer: "
+      "Terminal dimension area is empty!"
+    );
+  }
+
+  assert(sizes_match());
+}
+
+void CollisionBuffer::dispatch_collisions(
+  CollisionHandler& ch,
+  entities::Projectiles& projectiles
+) {
+  const auto pce_sz {projectiles.collision_effects.size()};
+  const auto max_bullet_id {*std::ranges::max_element(defender_bullet_ids)};
+  std::cout << io::term::cursor_home << (pce_sz <= max_bullet_id ? io::term::red : "")
+            << "STATUS" << io::term::reset;
+  assert(sizes_match());
+  for (std::size_t i {0}; i < back_types.size(); ++i) {
+    if (
+      entities::intersects(
+        entities::EntityType::Invader | entities::EntityType::InvaderBoss,
+        back_types[i]
+      )
+      && entities::intersects(entities::EntityType::DefenderBullet, back_types[i])
+    ) {
+      // NOTE: CURRENTLY FAILING ASSERTION!
+      if (defender_bullet_ids[i] >= projectiles.collision_effects.size()) {
+        throw std::runtime_error(
+          "projectiles.collision_effects.size(): "
+          + std::to_string(projectiles.collision_effects.size())
+          + "\ndefender_bullet_ids[i]: " + std::to_string(defender_bullet_ids[i])
+        );
+      }
+
+      ch.collisions.emplace_back(
+        projectiles.collision_effects[defender_bullet_ids[i]],
+        entities::EntityType::Invader,
+        ship_ids[i]
+      );
+      projectiles.remove(defender_bullet_ids[i]);
+      back_types[i] |= entities::EntityType::Explosion;
+      continue;
+    }
+
+    if (!entities::intersects(entities::EntityType::Defender, back_types[i])) {
+      continue;
+    }
+
+    if (entities::intersects(entities::EntityType::InvaderBullet, back_types[i])) {
+      ch.collisions.emplace_back(
+        projectiles.collision_effects[invader_bullet_ids[i]],
+        entities::EntityType::Defender,
+        ship_ids[i]
+      );
+      projectiles.remove(invader_bullet_ids[i]);
+      back_types[i] |= entities::EntityType::Explosion;
+      continue;
+    }
+
+    if (entities::intersects(entities::EntityType::PowerUp, back_types[i])) {
+      ch.collisions.emplace_back(
+        projectiles.collision_effects[power_up_ids[i]],
+        entities::EntityType::Defender,
+        ship_ids[i]
+      );
+      projectiles.remove(power_up_ids[i]);
+    }
+  }
+}
+
+bool CollisionBuffer::area_contains(
+  const int tl_x,
+  const int tl_y,
+  const std::vector<geometry::Point>& offsets,
+  entities::EntityType type,
+  const bool front,
+  const rendering::TermDims& bounds
+) const {
+  const auto width {static_cast<int>(bounds.width)};
+  const auto height {static_cast<int>(bounds.main_height)};
+  const auto& types {front ? front_types : back_types};
+
+  for (const auto& [x_offset, y_offset] : offsets) {
+    const int x_pos {tl_x + x_offset};
+    if (x_pos < 0 || x_pos >= width) {
+      continue;
+    }
+
+    const int y_pos {tl_y + y_offset};
+    if (y_pos < 0 || y_pos >= height) {
+      continue;
+    }
+
+    const int offset_idx {y_pos * width + x_pos};
+    if (offset_idx < 0) {
+      continue;
+    }
+
+    const auto offset_buf_idx {static_cast<std::size_t>(offset_idx)};
+    if (offset_buf_idx >= types.size()) {
+      continue;
+    }
+
+    if (entities::intersects(type, types[offset_buf_idx])) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void CollisionBuffer::clear_back() {
+  std::fill(back_types.begin(), back_types.end(), entities::EntityType::None);
+}
+
+bool CollisionBuffer::sizes_match() const {
+  return utility::sizes_match(
+    front_types,
+    back_types,
+    ship_ids,
+    invader_bullet_ids,
+    defender_bullet_ids,
+    power_up_ids
+  );
+}
+} // namespace tty_invaders::gameplay
+#include "tty_invaders/rendering/rendering.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <iostream>
+#include <string>
+#include <utility>
+
+#include "tty_invaders/entities/defender.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/rect_coords.h"
+#include "tty_invaders/io/term.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/formatting.h"
+#include "tty_invaders/rendering/render_attr.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::rendering {
+// TODO: Write tests and maybe make the rendering functions return strings to cout
+// myself
+void render_bar(const entities::Defender& defender, const TermDims& bounds) {
+  if (bounds.width < 2) {
+    return;
+  }
+
+  auto available_width {static_cast<int>(bounds.width)};
+  std::string result;
+  result.reserve(
+    opts::game_settings::action_bar_height * bounds.width
+    * expected_render_bytes_per_cell
+  );
+
+  io::term::move_cursor(result, 0, bounds.main_height);
+  result += io::term::clear_line;
+
+  if (std::cmp_less(bounds.width, defender.lives)) {
+    result += std::to_string(defender.lives);
+    result += io::term::red;
+    result += io::term::bold;
+    result += opts::game_settings::heart;
+    available_width -= 4;
+  } else {
+    result += io::term::red;
+    result += io::term::bold;
+    result +=
+      std::string(static_cast<std::size_t>(defender.lives), opts::game_settings::heart);
+    available_width -= defender.lives + 2;
+  }
+
+  result += io::term::reset;
+  effects::StatusEffectStrData data {str_data(defender.effect)};
+  if (static_cast<std::size_t>(available_width) >= data.num_chars) {
+    result += io::term::cursor_right;
+    io::term::move_cursor(result, bounds.width - data.num_chars, bounds.main_height);
+    result += data.str;
+    result += io::term::reset;
+  }
+
+  io::term::move_cursor(result, 0, bounds.main_height + 1);
+  result += io::term::clear_line;
+  std::size_t armor_bar {
+    (bounds.width * static_cast<std::size_t>(defender.armor))
+    / opts::game_settings::defender_armor
+  };
+
+  double armor_percent {(defender.armor * 100.0) / opts::game_settings::defender_armor};
+  if (armor_percent < opts::game_settings::low_percentage) {
+    result += io::term::red;
+  } else if (armor_percent < opts::game_settings::mid_percentage) {
+    result += io::term::yellow;
+  } else {
+    result += io::term::green;
+  }
+
+  result += std::string(armor_bar, 'X');
+  result += io::term::reset;
+  std::cout << result;
+  std::cout.flush();
+}
+
+// TODO: Test
+void render_main(const gameplay::CollisionBuffer& cb, const TermDims& bounds) {
+  geometry::RectCoords min_rect {dirty_area(cb, bounds)};
+  if (min_rect.empty()) {
+    return;
+  }
+
+  std::string result;
+  result.reserve(
+    (min_rect.br_x - min_rect.tl_x) * min_rect.br_y * expected_render_bytes_per_cell
+  );
+
+  Formatting prev {Formatting::None};
+  for (std::size_t y {min_rect.tl_y}; y < min_rect.br_y; ++y) {
+    io::term::move_cursor(result, min_rect.tl_x, y);
+    for (std::size_t x {min_rect.tl_x}; x < min_rect.br_x; ++x) {
+      RenderAttr ra {dominant_type(cb.back_types[y * bounds.width + x])};
+      result += ansi_escape(prev, ra.formatting);
+      result += ra.ch;
+      prev = ra.formatting;
+    }
+  }
+
+  std::cout << result << io::term::reset;
+}
+
+geometry::RectCoords dirty_area(
+  const gameplay::CollisionBuffer& cb,
+  const TermDims& bounds
+) {
+  geometry::RectCoords dirty_area {};
+  bool first {true};
+
+  for (std::size_t y {0}; y < bounds.main_height; ++y) {
+    for (std::size_t x {0}; x < bounds.width; ++x) {
+      std::size_t cb_idx {y * bounds.width + x};
+      if (cb.back_types[cb_idx] == cb.front_types[cb_idx]) {
+        continue;
+      }
+
+      if (first) {
+        dirty_area.tl_x = x;
+        dirty_area.tl_y = y;
+        dirty_area.br_x = x + 1;
+        dirty_area.br_y = y + 1;
+        first = false;
+        continue;
+      }
+
+      dirty_area.tl_x = std::min(x, dirty_area.tl_x);
+      dirty_area.tl_y = std::min(y, dirty_area.tl_y);
+      dirty_area.br_x = std::max(x + 1, dirty_area.br_x);
+      dirty_area.br_y = std::max(y + 1, dirty_area.br_y);
+    }
+  }
+
+  return dirty_area;
+}
+} // namespace tty_invaders::rendering
+#include "tty_invaders/rendering/render_attr.h"
+
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/rendering/formatting.h"
+
+namespace tty_invaders::rendering {
+RenderAttr::RenderAttr(entities::EntityType type) {
+  switch (type) {
+    case entities::EntityType::Defender:
+      formatting = Formatting::Bold | Formatting::BrightGreen;
+      ch = 'A';
+      break;
+    case entities::EntityType::DefenderBullet:
+      formatting = Formatting::Green;
+      ch = 'o';
+      break;
+    case entities::EntityType::Explosion:
+      formatting = Formatting::BgRed;
+      ch = ' ';
+      break;
+    case entities::EntityType::Invader:
+      formatting = Formatting::None;
+      ch = 'V';
+      break;
+    case entities::EntityType::InvaderBullet:
+      formatting = Formatting::BrightRed | Formatting::Bold;
+      ch = 'o';
+      break;
+    case entities::EntityType::PowerUp:
+      formatting = Formatting::Blue;
+      ch = '+';
+      break;
+    default:
+      formatting = Formatting::None;
+      ch = ' ';
+      break;
+  }
+}
+} // namespace tty_invaders::rendering
+#include "tty_invaders/rendering/term_dims.h"
+
+#include <sys/ioctl.h>
+#include <unistd.h>
+
+#include <stdexcept>
+
+#include "tty_invaders/opts/game_settings.h"
+
+namespace tty_invaders::rendering {
+TermDims::TermDims() {
+  winsize w;
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w)) {
+    main_height = 26;
+    bar_height = 1;
+    width = 80;
+    return;
+  }
+
+  bar_height = opts::game_settings::action_bar_height;
+  if (bar_height > w.ws_row) {
+    throw std::runtime_error("Action bar height too big for available terminal size!");
+  }
+
+  main_height = w.ws_row - bar_height;
+  width = w.ws_col;
+}
+} // namespace tty_invaders::rendering
+#include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <thread>
+#include <utility>
+#include <vector>
+
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/defender.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/invaders.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectiles.h"
+#include "tty_invaders/entities/templates/ships.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/gameplay/collision_handler.h"
+#include "tty_invaders/io/io.h"
+#include "tty_invaders/io/key_press.h"
+#include "tty_invaders/io/raw_term.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/rendering.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+using namespace tty_invaders;
+
+int main() {
+  int level {0};
+  io::RawTerm raw_term {};
+  rendering::TermDims bounds {};
+  gameplay::CollisionBuffer cb {bounds};
+  gameplay::CollisionHandler ch;
+  entities::Defender defender {
+    &entities::templates::fighter,
+    opts::game_settings::defender_armor,
+    opts::game_settings::defender_lives,
+    opts::game_settings::defender_atk_freq
+  };
+
+  defender.tl_x = static_cast<int>(bounds.width / 2);
+  defender.tl_y = static_cast<int>(bounds.main_height - bounds.bar_height - 1)
+    - (defender.body->br_y);
+  defender.effect = tty_invaders::effects::StatusEffect::Laser;
+
+  entities::Invaders invaders {
+    std::vector(2, &entities::templates::fighter),
+    std::vector(2, &entities::templates::bullet),
+    std::vector {10, 20},
+    std::vector(2, 0),
+    std::vector(2, 100),
+    std::vector(2, 10),
+    std::vector(2, effects::StatusEffect::None)
+  };
+  // entities::Invaders invaders {random::generate_invaders(level)};
+
+  entities::Projectiles projectiles {};
+  auto last_tick {std::chrono::steady_clock::now()};
+
+  std::fill(
+    cb.front_types.begin(),
+    cb.front_types.end(),
+    entities::EntityType::Explosion
+  );
+
+  defender.update(cb, projectiles, bounds);
+  invaders.update(cb, projectiles, bounds);
+  projectiles.update(cb, bounds);
+  cb.dispatch_collisions(ch, projectiles);
+  ch.handle_collisions(defender, invaders);
+  defender.cleanup(projectiles, opts::game_settings::tick_rate);
+  invaders.cleanup();
+  rendering::render_main(cb, bounds);
+  rendering::render_bar(defender, bounds);
+  std::swap(cb.front_types, cb.back_types);
+  cb.clear_back();
+
+  while (defender.lives > 0) {
+    io::KeyPress kp {io::key_pressed()};
+    if (kp.type == io::KeyPress::Type::Char && kp.ch == opts::game_settings::quit_key) {
+      break;
+    }
+
+    defender.move(kp, cb, bounds);
+    const auto now {std::chrono::steady_clock::now()};
+    auto time_diff {now - last_tick};
+    bool updated {false};
+
+    while (time_diff >= opts::game_settings::tick_rate) {
+      defender.update(cb, projectiles, bounds);
+      invaders.update(cb, projectiles, bounds);
+      projectiles.update(cb, bounds);
+      cb.dispatch_collisions(ch, projectiles);
+      ch.handle_collisions(defender, invaders);
+      defender.cleanup(projectiles, opts::game_settings::tick_rate);
+      invaders.cleanup();
+      time_diff -= opts::game_settings::tick_rate;
+      updated = true;
+    }
+
+    if (updated) {
+      last_tick = now - time_diff;
+      rendering::render_main(cb, bounds);
+      rendering::render_bar(defender, bounds);
+      std::swap(cb.front_types, cb.back_types);
+      // std::ranges::fill(cb.defender_bullet_ids, 0);
+      cb.clear_back();
+      std::cout.flush();
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {1});
+  }
+
+  return 0;
+}
+#ifndef TTY_INVADERS_IO_CTRLS_ARROW_DIRECTION_H
+#define TTY_INVADERS_IO_CTRLS_ARROW_DIRECTION_H
+
+#include <cstdint>
+
+namespace tty_invaders::io::ctrls {
+enum class ArrowDirection : uint16_t {
+  Up = 1'000,
+  Down = 1'001,
+  Right = 1'002,
+  Left = 1'003,
+};
+} // namespace tty_invaders::io::ctrls
+#endif // TTY_INVADERS_IO_CTRLS_ARROW_DIRECTION_H
+#ifndef TTY_INVADERS_IO_TERM_H
+#define TTY_INVADERS_IO_TERM_H
+
+#include <cstddef>
+#include <format>
+#include <iterator>
+#include <string>
+#include <string_view>
+
+namespace tty_invaders::io::term {
+// Control
+constexpr std::string_view clear_screen {"\033[2J"}; // Clears visible screen
+constexpr std::string_view clear_line {"\033[2K"};   // Clears current line
+constexpr std::string_view hide_cursor {"\033[?25l"};
+constexpr std::string_view show_cursor {"\033[?25h"};
+constexpr std::string_view enter_alternate_screen {"\033[?1049h"};
+constexpr std::string_view leave_alternate_screen {"\033[?1049l"};
+constexpr std::string_view reset {"\033[0m"};
+
+// Navigation
+constexpr std::string_view cursor_home {"\033[H"}; // Moves cursor to (0,0)
+constexpr std::string_view cursor_up {"\033[A"};
+constexpr std::string_view cursor_down {"\033[B"};
+constexpr std::string_view cursor_right {"\033[C"};
+constexpr std::string_view cursor_left {"\033[D"};
+
+// Styles
+constexpr std::string_view bold {"\033[1m"};
+constexpr std::string_view dim {"\033[2m"};
+constexpr std::string_view underline {"\033[4m"};
+
+// Foreground (Text) Colors
+constexpr std::string_view grey {"\033[90m"};
+constexpr std::string_view red {"\033[31m"};
+constexpr std::string_view black {"\033[30m"};
+constexpr std::string_view green {"\033[32m"};
+constexpr std::string_view yellow {"\033[33m"};
+constexpr std::string_view blue {"\033[34m"};
+constexpr std::string_view magenta {"\033[35m"};
+constexpr std::string_view cyan {"\033[36m"};
+constexpr std::string_view white {"\033[37m"};
+
+// Bright Foreground Colors
+constexpr std::string_view bright_red {"\033[91m"};
+constexpr std::string_view bright_green {"\033[92m"};
+constexpr std::string_view bright_yellow {"\033[93m"};
+constexpr std::string_view bright_blue {"\033[94m"};
+
+// Background Colors
+constexpr std::string_view bg_red {"\033[41m"};
+constexpr std::string_view bg_green {"\033[42m"};
+constexpr std::string_view bg_yellow {"\033[43m"};
+constexpr std::string_view bg_blue {"\033[44m"};
+
+inline std::string cursor_down_n(std::size_t n) {
+  return std::format("\033[{}B", n);
+}
+
+inline void move_cursor(
+  std::string& out_buf,
+  const std::size_t x,
+  const std::size_t y
+) {
+  std::format_to(std::back_inserter(out_buf), "\033[{};{}H", y + 1, x + 1);
+}
+} // namespace tty_invaders::io::term
+
+#endif // TTY_INVADERS_IO_TERM_H
+#ifndef TTY_INVADERS_IO_RAW_TERM
+#define TTY_INVADERS_IO_RAW_TERM
+
+#include <termios.h>
+
+namespace tty_invaders::io {
+struct RawTerm {
+  explicit RawTerm();
+
+  ~RawTerm();
+
+private:
+  struct termios og_termios;
+};
+} // namespace tty_invaders::io
+
+#endif
+#ifndef TTY_INVADERS_IO_IO_H
+#define TTY_INVADERS_IO_IO_H
+
+#include "tty_invaders/io/key_press.h"
+
+namespace tty_invaders::io {
+KeyPress key_pressed();
+} // namespace tty_invaders::io
+
+#endif // TTY_INVADERS_IO_IO_H
+#ifndef TTY_INVADERS_IO_KEY_PRESS_H
+#define TTY_INVADERS_IO_KEY_PRESS_H
+
+#include "tty_invaders/io/ctrls/arrow_direction.h"
+
+namespace tty_invaders::io {
+struct KeyPress {
+  enum class Type {
+    None,
+    Char,
+    Arrow
+  };
+
+  bool operator==(const KeyPress&);
+
+  Type type;
+  ctrls::ArrowDirection arrow {};
+  unsigned char ch {};
+};
+} // namespace tty_invaders::io
+
+#endif // TTY_INVADERS_IO_KEY_PRESS_H
+#ifndef TTY_INVADERS_ENTITIES_INVADERS_H
+#define TTY_INVADERS_ENTITIES_INVADERS_H
+
+#include <vector>
+
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
+#include "tty_invaders/entities/templates/ship_body.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+struct Invaders {
+  // TODO: Maybe add a constructor that takes a seed and generates its own invaders
+  explicit Invaders(
+    const std::vector<const templates::ShipBody*>& ship_bodies,
+    const std::vector<const templates::ProjectileBody*>& projectile_bodies,
+    const std::vector<int>& tl_xs,
+    const std::vector<int>& tl_ys,
+    const std::vector<int>& armor,
+    const std::vector<int>& atk_spds,
+    const std::vector<effects::StatusEffect> effects
+  );
+
+  void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims&);
+  void cleanup();
+
+  std::vector<const templates::ShipBody*> ship_bodies;
+  std::vector<const templates::ProjectileBody*> projectile_bodies;
+  std::vector<int> tl_xs;
+  std::vector<int> tl_ys;
+  std::vector<int> armor;
+  std::vector<int> refracts;
+  std::vector<int> atk_spds;
+  std::vector<effects::StatusEffect> effects;
+
+private:
+  void move(const rendering::TermDims&);
+  void populate_collision_buffer(
+    gameplay::CollisionBuffer&,
+    const rendering::TermDims&
+  ) const;
+  void populate_projectiles(Projectiles&);
+  void remove(const std::size_t idx);
+  void assert_sizes_match() const;
+};
+} // namespace tty_invaders::entities
+
+#endif // TTY_INVADERS_ENTITIES_INVADERS_H
+#ifndef TTY_INVADERS_ENTITIES_PROJECTILES_H
+#define TTY_INVADERS_ENTITIES_PROJECTILES_H
+
+#include <cstddef>
+#include <vector>
+
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+struct Projectiles {
+  void update(gameplay::CollisionBuffer&, const rendering::TermDims&);
+  void add(
+    const int tl_x,
+    const int tl_y,
+    const int x_vel,
+    const int y_vel,
+    const templates::ProjectileBody* body,
+    const EntityType& owner,
+    const effects::CollisionEffect& collision_effect,
+    const effects::StatusEffect& status_effect
+  );
+  void remove(std::size_t idx);
+  void remove(effects::StatusEffect);
+  void clear();
+
+  std::vector<int> xs;
+  std::vector<int> ys;
+  std::vector<int> x_vels;
+  std::vector<int> y_vels;
+  std::vector<const templates::ProjectileBody*> bodies;
+  std::vector<EntityType> types;
+  std::vector<effects::CollisionEffect> collision_effects;
+  std::vector<effects::StatusEffect> status_effects;
+
+private:
+  void move(const rendering::TermDims&);
+  void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&);
+  bool vec_sizes_match() const;
+};
+} // namespace tty_invaders::entities
+
+#endif // TTY_INVADERS_ENTITIES_PROJECTILES_H
+#ifndef TTY_INVADERS_ENTITIES_DEFENDER_H
+#define TTY_INVADERS_ENTITIES_DEFENDER_H
+
+#include <chrono>
+
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/ship_body.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/io/key_press.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+struct Defender {
+  explicit Defender(
+    const templates::ShipBody* body,
+    const int armor,
+    const int lives,
+    const int atk_spd
+  );
+
+  void move(
+    const io::KeyPress&,
+    const gameplay::CollisionBuffer&,
+    const rendering::TermDims&
+  );
+  void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims&);
+  void cleanup(Projectiles&, const std::chrono::milliseconds);
+
+  const templates::ShipBody* body;
+  int tl_x {0};
+  int tl_y {0};
+  int armor;
+  int lives;
+  int refract {0};
+  int atk_spd;
+  effects::StatusEffect effect {effects::StatusEffect::None};
+  std::chrono::milliseconds effect_duration {
+    opts::game_settings::status_effect_duration
+  };
+
+private:
+  void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&) const;
+  void populate_projectiles(Projectiles&);
+};
+} // namespace tty_invaders::entities
+
+#endif // TTY_INVADERS_ENTITIES_DEFENDER_H
+#ifndef TTY_INVADERS_ENTITIES_ENTITY_TYPE_H
+#define TTY_INVADERS_ENTITIES_ENTITY_TYPE_H
+
+#include <cstdint>
+#include <utility>
+
+namespace tty_invaders::entities {
+enum class EntityType : std::uint8_t {
+  None = 0u,
+  Defender = 1u << 0,
+  DefenderBullet = 1u << 1,
+  Invader = 1u << 2,
+  InvaderBoss = 1u << 6,
+  InvaderBullet = 1u << 3,
+  PowerUp = 1u << 4,
+  Explosion = 1u << 5,
+};
+
+constexpr EntityType operator|(EntityType lop, EntityType rop) {
+  return static_cast<EntityType>(std::to_underlying(lop) | std::to_underlying(rop));
+}
+
+constexpr EntityType operator&(EntityType lop, EntityType rop) {
+  return static_cast<EntityType>(std::to_underlying(lop) & std::to_underlying(rop));
+}
+
+constexpr EntityType operator^(EntityType lop, EntityType rop) {
+  return static_cast<EntityType>(std::to_underlying(lop) ^ std::to_underlying(rop));
+}
+
+constexpr EntityType& operator|=(EntityType& lop, EntityType rop) {
+  return lop = lop | rop;
+}
+
+constexpr EntityType& operator&=(EntityType& lop, EntityType rop) {
+  return lop = lop & rop;
+}
+
+constexpr bool intersects(EntityType a, EntityType b) {
+  return (a & b) != EntityType::None;
+}
+
+EntityType dominant_type(EntityType type);
+} // namespace tty_invaders::entities
+
+#endif // TTY_INVADERS_ENTITIES_ENTITY_TYPE_H
+#ifndef TTY_INVADERS_ENTITIES_TEMPLATES_SHIPS_H
+#define TTY_INVADERS_ENTITIES_TEMPLATES_SHIPS_H
+
+#include "tty_invaders/entities/templates/ship_body.h"
+
+namespace tty_invaders::entities::templates {
+extern const ShipBody destroyer;
+extern const ShipBody fighter;
+extern const ShipBody speeder;
+} // namespace tty_invaders::entities::templates
+
+#endif // TTY_INVADERS_ENTITIES_TEMPLATES_SHIPS_H
+#ifndef TTY_INVADERS_ENTITIES_PROJECTILE_BODY_H
+#define TTY_INVADERS_ENTITIES_PROJECTILE_BODY_H
+
+#include <vector>
+
+#include "tty_invaders/geometry/point.h"
+
+namespace tty_invaders::entities::templates {
+struct ProjectileBody {
+  const std::vector<geometry::Point> points;
+  const geometry::Point tl;
+  const geometry::Point br;
+};
+} // namespace tty_invaders::entities::templates
+
+#endif // TTY_INVADERS_ENTITIES_PROJECTILE_BODY_H
+#ifndef TTY_INVADERS_ENTITIES_TEMPLATES_SHIP_BODY_H
+#define TTY_INVADERS_ENTITIES_TEMPLATES_SHIP_BODY_H
+
+#include <cstddef>
+#include <vector>
+
+#include "tty_invaders/geometry/point.h"
+
+namespace tty_invaders::entities::templates {
+struct ShipBody {
+  const std::vector<geometry::Point> hitbox_pos;
+  const std::vector<std::size_t> cannon_pos;
+  const int br_x;
+  const int br_y;
+};
+} // namespace tty_invaders::entities::templates
+
+#endif // TTY_INVADERS_ENTITIES_TEMPLATES_SHIP_BODY_H
+#ifndef TTY_INVADERS_ENTITIES_TEMPLATES_PROJECTILES_H
+#define TTY_INVADERS_ENTITIES_TEMPLATES_PROJECTILES_H
+
+#include "tty_invaders/entities/templates/projectile_body.h"
+
+namespace tty_invaders::entities::templates {
+extern const ProjectileBody bullet;
+extern const ProjectileBody power_up;
+extern const ProjectileBody rocket;
+} // namespace tty_invaders::entities::templates
+
+#endif // TTY_INVADERS_ENTITIES_TEMPLATES_PROJECTILES_H
+#ifndef TTY_INVADERS_GEOMETRY_POINT_H
+#define TTY_INVADERS_GEOMETRY_POINT_H
+
+namespace tty_invaders::geometry {
+struct Point {
+  int x {0};
+  int y {0};
+};
+} // namespace tty_invaders::geometry
+
+#endif // TTY_INVADERS_GEOMETRY_POINT_H
+#ifndef TTY_INVADERS_GEOMETRY_RECT_COORDS_H
+#define TTY_INVADERS_GEOMETRY_RECT_COORDS_H
+
+#include <cstddef>
+
+namespace tty_invaders::geometry {
+struct RectCoords {
+  bool empty() const;
+
+  std::size_t tl_x {0};
+  std::size_t tl_y {0};
+  std::size_t br_x {0};
+  std::size_t br_y {0};
+};
+} // namespace tty_invaders::geometry
+
+#endif // TTY_INVADERS_GEOMETRY_RECT_COORDS_H
+#ifndef TTY_INVADERS_RANDOM_RANDOM_H
+#define TTY_INVADERS_RANDOM_RANDOM_H
+
+#include "tty_invaders/entities/invaders.h"
+namespace tty_invaders::random {
+int random_int(const int level);
+entities::Invaders generate_invaders(const int level);
+} // namespace tty_invaders::random
+
+#endif // TTY_INVADERS_RANDOM_RANDOM_H
+#ifndef TTY_INVADERS_UTILITY_MASK_H
+#define TTY_INVADERS_UTILITY_MASK_H
+
+namespace tty_invaders::utility::mask {
+template <typename Mask>
+constexpr bool is_subset(Mask subset, Mask superset) {
+  return (superset & subset) == subset;
+}
+} // namespace tty_invaders::utility::mask
+
+#endif // TTY_INVADERS_UTILITY_MASK_H
+#ifndef TTY_INVADERS_UTILITY_CONTAINERS_H
+#define TTY_INVADERS_UTILITY_CONTAINERS_H
+
+namespace tty_invaders::utility {
+template <typename T>
+concept HasSize = requires(T t) { t.size(); };
+
+template <HasSize Reference, HasSize... Tests>
+bool sizes_match(const Reference& ref, const Tests&... tests) {
+  return ((ref.size() == tests.size()) && ...);
+}
+} // namespace tty_invaders::utility
+
+#endif // TTY_INVADERS_UTILITY_CONTAINERS_H
+#ifndef TTY_INVADERS_GAMEPLAY_COLLISION_DATA_H
+#define TTY_INVADERS_GAMEPLAY_COLLISION_DATA_H
+
+#include <cstddef>
+
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+
+namespace tty_invaders::gameplay {
+struct CollisionData {
+  effects::CollisionEffect effect;
+  entities::EntityType target;
+  std::size_t target_id;
+};
+} // namespace tty_invaders::gameplay
+
+#endif // TTY_INVADERS_GAMEPLAY_COLLISION_DATA_H
+#ifndef TTY_INVADERS_GAMEPLAY_COLLISION_BUFFER_H
+#define TTY_INVADERS_GAMEPLAY_COLLISION_BUFFER_H
+
+#include <cstddef>
+#include <vector>
+
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/gameplay/collision_handler.h"
+#include "tty_invaders/geometry/point.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+struct Defender;
+struct Invaders;
+struct Projectiles;
+} // namespace tty_invaders::entities
+
+namespace tty_invaders::gameplay {
+struct CollisionBuffer {
+  explicit CollisionBuffer(const rendering::TermDims&);
+
+  void dispatch_collisions(CollisionHandler&, entities::Projectiles&);
+  bool area_contains(
+    const int tl_x,
+    const int tl_y,
+    const std::vector<geometry::Point>& offsets,
+    entities::EntityType type,
+    const bool front,
+    const rendering::TermDims& bounds
+  ) const;
+  void clear_back();
+
+  std::vector<entities::EntityType> front_types;
+  std::vector<entities::EntityType> back_types;
+  std::vector<std::size_t> ship_ids;
+  std::vector<std::size_t> invader_bullet_ids;
+  std::vector<std::size_t> defender_bullet_ids;
+  std::vector<std::size_t> power_up_ids;
+
+private:
+  bool sizes_match() const;
+};
+} // namespace tty_invaders::gameplay
+
+#endif // TTY_INVADERS_GAMEPLAY_COLLISION_BUFFER_H
+#ifndef TTY_INVADERS_GAMEPLAY_COLLISION_HANDLER_H
+#define TTY_INVADERS_GAMEPLAY_COLLISION_HANDLER_H
+
+#include <vector>
+
+#include "tty_invaders/gameplay/collision_data.h"
+
+namespace tty_invaders::entities {
+struct Defender;
+struct Invaders;
+} // namespace tty_invaders::entities
+
+namespace tty_invaders::gameplay {
+struct CollisionHandler {
+  void handle_collisions(entities::Defender&, entities::Invaders&);
+
+  std::vector<CollisionData> collisions;
+};
+} // namespace tty_invaders::gameplay
+
+#endif // TTY_INVADERS_GAMEPLAY_COLLISION_HANDLER_H
+#ifndef TTY_INVADERS_RENDERING_FORMATTING_H
+#define TTY_INVADERS_RENDERING_FORMATTING_H
+
+#include <array>
+#include <cstdint>
+#include <string>
+#include <utility>
+
+#include "tty_invaders/io/term.h"
+#include "tty_invaders/utility/mask.h"
+
+namespace tty_invaders::rendering {
+enum class Formatting : uint32_t {
+  None = 0u,
+  Bold = 1u << 0,
+  Dim = 1u << 1,
+  Underline = 1u << 2,
+
+  Black = 1u << 3,
+  Red = 1u << 4,
+  Green = 1u << 5,
+  Yellow = 1u << 6,
+  Blue = 1u << 7,
+  White = 1u << 8,
+  Grey = 1u << 9,
+
+  BrightRed = 1u << 10,
+  BrightGreen = 1u << 11,
+  BrightYellow = 1u << 12,
+  BrightBlue = 1u << 13,
+
+  BgRed = 1u << 14,
+  BgGreen = 1u << 15,
+  BgYellow = 1u << 16,
+  BgBlue = 1u << 17,
+};
+
+constexpr std::array formatting_codes {
+  std::pair {Formatting::Bold, io::term::bold},
+  std::pair {Formatting::Dim, io::term::dim},
+  std::pair {Formatting::Underline, io::term::underline},
+
+  std::pair {Formatting::Black, io::term::black},
+  std::pair {Formatting::Red, io::term::red},
+  std::pair {Formatting::Green, io::term::green},
+  std::pair {Formatting::Yellow, io::term::yellow},
+  std::pair {Formatting::Blue, io::term::blue},
+  std::pair {Formatting::White, io::term::white},
+  std::pair {Formatting::Grey, io::term::grey},
+
+  std::pair {Formatting::BrightRed, io::term::bright_red},
+  std::pair {Formatting::BrightGreen, io::term::bright_green},
+  std::pair {Formatting::BrightYellow, io::term::bright_yellow},
+  std::pair {Formatting::BrightBlue, io::term::bright_blue},
+
+  std::pair {Formatting::BgRed, io::term::bg_red},
+  std::pair {Formatting::BgGreen, io::term::bg_green},
+  std::pair {Formatting::BgYellow, io::term::bg_yellow},
+  std::pair {Formatting::BgBlue, io::term::bg_blue},
+};
+
+constexpr bool operator==(Formatting lop, Formatting rop) {
+  return std::to_underlying(lop) == std::to_underlying(rop);
+}
+
+constexpr bool operator!=(Formatting lop, Formatting rop) {
+  return !(lop == rop);
+}
+
+constexpr Formatting operator|(Formatting lop, Formatting rop) {
+  return static_cast<Formatting>(std::to_underlying(lop) | std::to_underlying(rop));
+}
+
+constexpr Formatting operator&(Formatting lop, Formatting rop) {
+  return static_cast<Formatting>(std::to_underlying(lop) & std::to_underlying(rop));
+}
+
+constexpr Formatting operator^(Formatting lop, Formatting rop) {
+  return static_cast<Formatting>(std::to_underlying(lop) ^ std::to_underlying(rop));
+}
+
+constexpr Formatting& operator|=(Formatting& lop, Formatting rop) {
+  return lop = lop | rop;
+}
+
+constexpr Formatting& operator&=(Formatting& lop, Formatting rop) {
+  return lop = lop & rop;
+}
+
+constexpr Formatting& operator^=(Formatting& lop, Formatting rop) {
+  return lop = lop ^ rop;
+}
+
+constexpr std::string to_string(Formatting formatting) {
+  if (formatting == Formatting::None) {
+    return "";
+  }
+
+  std::string result;
+  for (const auto& [format, code] : formatting_codes) {
+    result += (formatting & format) == Formatting::None ? "" : code;
+  }
+
+  return result;
+}
+
+constexpr std::string ansi_escape(const Formatting& prev, const Formatting& cur) {
+  std::string result;
+  if (!utility::mask::is_subset(prev, cur)) {
+    result = io::term::reset;
+    return result + to_string(cur);
+  }
+
+  return to_string(cur ^ prev);
+}
+} // namespace tty_invaders::rendering
+
+#endif // TTY_INVADERS_RENDERING_FORMATTING_H
+#ifndef TTY_INVADERS_RENDERING_RENDER_ATTR_H
+#define TTY_INVADERS_RENDERING_RENDER_ATTR_H
+
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/rendering/formatting.h"
+
+namespace tty_invaders::rendering {
+struct RenderAttr {
+  explicit RenderAttr(entities::EntityType);
+
+  Formatting formatting;
+  char ch;
+};
+} // namespace tty_invaders::rendering
+
+#endif // TTY_INVADERS_RENDERING_RENDER_ATTR_H
+#ifndef TTY_INVADERS_RENDERING_RENDERING_H
+#define TTY_INVADERS_RENDERING_RENDERING_H
+
+#include <cstddef>
+
+#include "tty_invaders/entities/defender.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/rect_coords.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::rendering {
+constexpr std::size_t expected_render_bytes_per_cell {4};
+
+void render_bar(const entities::Defender&, const TermDims&);
+void render_main(const gameplay::CollisionBuffer&, const TermDims&);
+// Determines the minimal area that needs to be touched to blit as little as possible
+geometry::RectCoords dirty_area(const gameplay::CollisionBuffer&, const TermDims&);
+} // namespace tty_invaders::rendering
+
+#endif // TTY_INVADERS_RENDERING_RENDERING_H
+#ifndef TTY_INVADERS_RENDERING_TERM_DIMS_H
+#define TTY_INVADERS_RENDERING_TERM_DIMS_H
+
+#include <cstddef>
+
+namespace tty_invaders::rendering {
+struct TermDims {
+  explicit TermDims();
+
+  std::size_t main_height;
+  std::size_t bar_height;
+  std::size_t width;
+};
+} // namespace tty_invaders::rendering
+
+#endif // TTY_INVADERS_RENDERING_TERM_DIMS_H
+#ifndef TTY_INVADERS_EFFECTS_STATUS_EFFECT_H
+#define TTY_INVADERS_EFFECTS_STATUS_EFFECT_H
+
+#include <array>
+#include <cstddef>
+#include <string>
+#include <utility>
+
+#include "tty_invaders/io/term.h"
+
+namespace tty_invaders::effects {
+enum class StatusEffect : int {
+  None = 0u,
+  DoubleAtkSpd = 1u << 0,
+  DoubleDmg = 1u << 1,
+  Invincible = 1u << 2,
+  Homing = 1u << 3,
+  Laser = 1u << 4
+};
+
+struct StatusEffectStrData {
+  std::string str;
+  std::size_t num_chars;
+};
+
+const std::array string_data {
+  std::pair {
+    StatusEffect::None,
+    StatusEffectStrData {std::string {io::term::dim} + "No effect", 9}
+  },
+  std::pair {
+    StatusEffect::DoubleAtkSpd,
+    StatusEffectStrData {std::string {io::term::yellow} + "2x ATK SPD", 10}
+  },
+  std::pair {
+    StatusEffect::DoubleDmg,
+    StatusEffectStrData {std::string {io::term::red} + "2x ATK DMG", 10}
+  },
+  std::pair {
+    StatusEffect::Invincible,
+    StatusEffectStrData {std::string {io::term::blue} + "Invincible", 10}
+  },
+  std::pair {
+    StatusEffect::Homing,
+    StatusEffectStrData {std::string {io::term::grey} + "Homing", 6}
+  },
+  std::pair {
+    StatusEffect::Laser,
+    StatusEffectStrData {std::string {io::term::green} + "Laser", 5}
+  },
+};
+
+inline const StatusEffectStrData& str_data(StatusEffect effect) {
+  for (const auto& [status_effect, str_data] : string_data) {
+    if (effect == status_effect) {
+      return str_data;
+    }
+  }
+
+  std::unreachable();
+}
+
+constexpr bool operator==(StatusEffect lop, StatusEffect rop) {
+  return std::to_underlying(lop) == std::to_underlying(rop);
+}
+
+constexpr bool operator!=(StatusEffect lop, StatusEffect rop) {
+  return !(lop == rop);
+}
+
+constexpr StatusEffect operator|(StatusEffect lop, StatusEffect rop) {
+  return static_cast<StatusEffect>(std::to_underlying(lop) | std::to_underlying(rop));
+}
+
+constexpr StatusEffect operator&(StatusEffect lop, StatusEffect rop) {
+  return static_cast<StatusEffect>(std::to_underlying(lop) & std::to_underlying(rop));
+}
+
+constexpr StatusEffect operator^(StatusEffect lop, StatusEffect rop) {
+  return static_cast<StatusEffect>(std::to_underlying(lop) ^ std::to_underlying(rop));
+}
+
+constexpr StatusEffect& operator|=(StatusEffect& lop, StatusEffect rop) {
+  return lop = lop | rop;
+}
+
+constexpr StatusEffect& operator&=(StatusEffect& lop, StatusEffect rop) {
+  return lop = lop & rop;
+}
+
+constexpr StatusEffect& operator^=(StatusEffect& lop, StatusEffect rop) {
+  return lop = lop ^ rop;
+}
+} // namespace tty_invaders::effects
+
+#endif // TTY_INVADERS_EFFECTS_STATUS_EFFECT_H
+#ifndef TTY_INVADERS_EFFECTS_COLLISION_EFFECT_H
+#define TTY_INVADERS_EFFECTS_COLLISION_EFFECT_H
+
+#include <utility>
+
+namespace tty_invaders::effects {
+struct CollisionEffect {
+  enum class Effect {
+    Damage,
+    Heal,
+    Armor,
+    PowerUp
+  } type;
+  int val;
+};
+
+constexpr bool operator==(
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
+) {
+  return std::to_underlying(lop) == std::to_underlying(rop);
+}
+
+constexpr bool operator!=(
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
+) {
+  return !(lop == rop);
+}
+
+constexpr CollisionEffect::Effect operator|(
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
+) {
+  return static_cast<CollisionEffect::Effect>(
+    std::to_underlying(lop) | std::to_underlying(rop)
+  );
+}
+
+constexpr CollisionEffect::Effect operator&(
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
+) {
+  return static_cast<CollisionEffect::Effect>(
+    std::to_underlying(lop) & std::to_underlying(rop)
+  );
+}
+
+constexpr CollisionEffect::Effect operator^(
+  CollisionEffect::Effect lop,
+  CollisionEffect::Effect rop
+) {
+  return static_cast<CollisionEffect::Effect>(
+    std::to_underlying(lop) ^ std::to_underlying(rop)
+  );
+}
+
+constexpr CollisionEffect::Effect& operator|=(
+  CollisionEffect::Effect& lop,
+  CollisionEffect::Effect rop
+) {
+  return lop = lop | rop;
+}
+
+constexpr CollisionEffect::Effect& operator&=(
+  CollisionEffect::Effect& lop,
+  CollisionEffect::Effect rop
+) {
+  return lop = lop & rop;
+}
+
+constexpr CollisionEffect::Effect& operator^=(
+  CollisionEffect::Effect& lop,
+  CollisionEffect::Effect rop
+) {
+  return lop = lop ^ rop;
+}
+} // namespace tty_invaders::effects
+
+#endif // TTY_INVADERS_EFFECTS_COLLISION_EFFECT_H
+#ifndef TTY_INVADERS_OPTS_GAME_SETTINGS_H
+#define TTY_INVADERS_OPTS_GAME_SETTINGS_H
+
+#include <array>
+#include <chrono>
+
+#include "tty_invaders/entities/entity_type.h"
+
+namespace tty_invaders::opts::game_settings {
+constexpr char quit_key {'q'};
+
+namespace movement {
+constexpr char up {'w'};
+constexpr char down {'s'};
+constexpr char right {'d'};
+constexpr char left {'a'};
+} // namespace movement
+
+constexpr char heart {'@'};
+
+constexpr double high_percentage {100.0};
+constexpr double mid_percentage {70.0};
+constexpr double low_percentage {30.0};
+
+constexpr int defender_lives {3};
+constexpr int defender_armor {100};
+constexpr int defender_atk_freq {10};
+constexpr int defender_atk_dmg {25};
+
+constexpr int invader_level_seed {0};
+constexpr int invader_atk_freq {25};
+constexpr int invader_atk_dmg {5};
+
+constexpr int defender_mov_spd {1};
+
+constexpr int action_bar_height {2};
+
+constexpr std::chrono::milliseconds status_effect_duration {10'000};
+constexpr std::chrono::milliseconds tick_rate {50};
+
+constexpr std::array entity_type_priority {
+  entities::EntityType::PowerUp,
+  entities::EntityType::Explosion,
+  entities::EntityType::InvaderBoss,
+  entities::EntityType::Defender,
+  entities::EntityType::Invader,
+  entities::EntityType::InvaderBullet,
+  entities::EntityType::DefenderBullet,
+  entities::EntityType::None,
+};
+} // namespace tty_invaders::opts::game_settings
+
+#endif // TTY_INVADERS_OPTS_GAME_SETTINGS_H

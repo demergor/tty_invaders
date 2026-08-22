@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <format>
 #include <iterator>
+#include <string>
 #include <string_view>
 
 namespace tty_invaders::io::term {
@@ -50,6 +51,10 @@ constexpr std::string_view bg_red {"\033[41m"};
 constexpr std::string_view bg_green {"\033[42m"};
 constexpr std::string_view bg_yellow {"\033[43m"};
 constexpr std::string_view bg_blue {"\033[44m"};
+
+inline std::string cursor_down_n(std::size_t n) {
+  return std::format("\033[{}B", n);
+}
 
 inline void move_cursor(
   std::string& out_buf,

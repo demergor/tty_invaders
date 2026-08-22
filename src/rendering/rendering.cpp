@@ -58,6 +58,7 @@ void render_bar(const entities::Defender& defender, const TermDims& bounds) {
   }
 
   io::term::move_cursor(result, 0, bounds.main_height + 1);
+  result += io::term::clear_line;
   std::size_t armor_bar {
     (bounds.width * static_cast<std::size_t>(defender.armor))
     / opts::game_settings::defender_armor
@@ -97,6 +98,7 @@ void render_main(const gameplay::CollisionBuffer& cb, const TermDims& bounds) {
       RenderAttr ra {dominant_type(cb.back_types[y * bounds.width + x])};
       result += ansi_escape(prev, ra.formatting);
       result += ra.ch;
+      prev = ra.formatting;
     }
   }
 

@@ -159,8 +159,8 @@ TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
 
   ASSERT_TRUE(
     std::all_of(
-      projectiles.effects.begin(),
-      projectiles.effects.end(),
+      projectiles.collision_effects.begin(),
+      projectiles.collision_effects.end(),
       [](const effects::CollisionEffect val) {
         return val.type == effects::CollisionEffect::Effect::Damage;
       }
@@ -169,8 +169,8 @@ TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
 
   ASSERT_TRUE(
     std::all_of(
-      projectiles.effects.begin(),
-      projectiles.effects.end(),
+      projectiles.collision_effects.begin(),
+      projectiles.collision_effects.end(),
       [](const effects::CollisionEffect val) {
         return val.val == opts::game_settings::invader_atk_dmg;
       }

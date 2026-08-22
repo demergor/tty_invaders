@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/rendering/term_dims.h"
@@ -27,7 +28,8 @@ void Projectiles::add(
   const int y_vel,
   const templates::ProjectileBody* body,
   const EntityType& type,
-  const effects::CollisionEffect& effect
+  const effects::CollisionEffect& collision_effect,
+  const effects::StatusEffect& status_effect
 ) {
   xs.emplace_back(x);
   ys.emplace_back(y);
@@ -35,9 +37,10 @@ void Projectiles::add(
   y_vels.emplace_back(y_vel);
   bodies.emplace_back(body);
   types.emplace_back(type);
-  effects.emplace_back(effect);
+  collision_effects.emplace_back(collision_effect);
+  status_effects.emplace_back(status_effect);
 
-  assert(utility::sizes_match(xs, ys, x_vels, y_vels, bodies, types, effects));
+  assert(vec_sizes_match());
 }
 
 void Projectiles::clear() {
@@ -47,9 +50,10 @@ void Projectiles::clear() {
   y_vels.clear();
   bodies.clear();
   types.clear();
-  effects.clear();
+  collision_effects.clear();
+  status_effects.clear();
 
-  assert(utility::sizes_match(xs, ys, x_vels, y_vels, bodies, types, effects));
+  assert(vec_sizes_match());
 }
 
 void Projectiles::move(const rendering::TermDims& bounds) {
@@ -73,11 +77,23 @@ void Projectiles::move(const rendering::TermDims& bounds) {
     ++idx;
   }
 
-  assert(utility::sizes_match(xs, ys, x_vels, y_vels, bodies, types, effects));
+  assert(vec_sizes_match());
 }
 
-// TODO: Write test
-void Projectiles::remove(const std::size_t idx) {
+void Projectiles::remove(effects::StatusEffect effect) {
+  std::size_t idx {0};
+  while (idx < status_effects.size()) {
+    if (status_effects[idx] == effect) {
+      remove(idx);
+    } else {
+      ++idx;
+    }
+  }
+
+  assert(vec_sizes_match());
+}
+
+void Projectiles::remove(std::size_t idx) {
   if (idx >= xs.size()) {
     throw std::runtime_error(
       "Error removing projectile: Index is out of bounds!\nIndex: "
@@ -103,8 +119,11 @@ void Projectiles::remove(const std::size_t idx) {
   types[idx] = types.back();
   types.pop_back();
 
-  effects[idx] = effects.back();
-  effects.pop_back();
+  collision_effects[idx] = collision_effects.back();
+  collision_effects.pop_back();
+
+  status_effects[idx] = status_effects.back();
+  status_effects.pop_back();
 }
 
 // TODO: Write test
@@ -116,7 +135,7 @@ void Projectiles::populate_coll_buf(
     const auto grid_x {static_cast<std::size_t>(xs[i])};
     const auto grid_y {static_cast<std::size_t>(ys[i])};
     std::size_t cb_idx {grid_y * bounds.width + grid_x};
-    cb.back_types[cb_idx] &= types[i];
+    cb.back_types[cb_idx] |= types[i];
 
     switch (types[i]) {
       case EntityType::DefenderBullet: cb.defender_bullet_ids[cb_idx] = i; break;
@@ -125,5 +144,18 @@ void Projectiles::populate_coll_buf(
       default: std::unreachable();
     }
   }
+}
+
+bool Projectiles::vec_sizes_match() const {
+  return utility::sizes_match(
+    xs,
+    ys,
+    x_vels,
+    y_vels,
+    bodies,
+    types,
+    collision_effects,
+    status_effects
+  );
 }
 } // namespace tty_invaders::entities

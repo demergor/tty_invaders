@@ -3,12 +3,16 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <iostream>
 #include <stdexcept>
+#include <vector>
 
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/gameplay/collision_handler.h"
+#include "tty_invaders/io/term.h"
 #include "tty_invaders/rendering/term_dims.h"
+#include "tty_invaders/utility/containers.h"
 
 namespace tty_invaders::gameplay {
 CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
@@ -34,12 +38,14 @@ CollisionBuffer::CollisionBuffer(const rendering::TermDims& td)
       "Terminal dimension area is empty!"
     );
   }
+
+  assert(sizes_match());
 }
 
 void CollisionBuffer::dispatch_collisions(
   CollisionHandler& ch,
-  const entities::Projectiles& projectiles
-) const {
+  entities::Projectiles& projectiles
+) {
   for (std::size_t i {0}; i < back_types.size(); ++i) {
     if (
       entities::intersects(
@@ -49,10 +55,12 @@ void CollisionBuffer::dispatch_collisions(
       && entities::intersects(entities::EntityType::DefenderBullet, back_types[i])
     ) {
       ch.collisions.emplace_back(
-        projectiles.effects[defender_bullet_ids[i]],
+        projectiles.collision_effects[defender_bullet_ids[i]],
         entities::EntityType::Invader,
         ship_ids[i]
       );
+      proj_rm.emplace_back(defender_bullet_ids[i]);
+      back_types[i] |= entities::EntityType::Explosion;
       continue;
     }
 
@@ -62,21 +70,26 @@ void CollisionBuffer::dispatch_collisions(
 
     if (entities::intersects(entities::EntityType::InvaderBullet, back_types[i])) {
       ch.collisions.emplace_back(
-        projectiles.effects[invader_bullet_ids[i]],
+        projectiles.collision_effects[invader_bullet_ids[i]],
         entities::EntityType::Defender,
         ship_ids[i]
       );
+      proj_rm.emplace_back(invader_bullet_ids[i]);
+      back_types[i] |= entities::EntityType::Explosion;
       continue;
     }
 
     if (entities::intersects(entities::EntityType::PowerUp, back_types[i])) {
       ch.collisions.emplace_back(
-        projectiles.effects[power_up_ids[i]],
+        projectiles.collision_effects[power_up_ids[i]],
         entities::EntityType::Defender,
         ship_ids[i]
       );
+      proj_rm.emplace_back(power_up_ids[i]);
     }
   }
+
+  remove_projectiles(projectiles);
 }
 
 bool CollisionBuffer::area_contains(
@@ -122,5 +135,25 @@ bool CollisionBuffer::area_contains(
 
 void CollisionBuffer::clear_back() {
   std::fill(back_types.begin(), back_types.end(), entities::EntityType::None);
+}
+
+void CollisionBuffer::remove_projectiles(entities::Projectiles& projectiles) {
+  std::ranges::sort(proj_rm, std::greater {});
+  for (auto idx : proj_rm) {
+    projectiles.remove(idx);
+  }
+
+  proj_rm.clear();
+}
+
+bool CollisionBuffer::sizes_match() const {
+  return utility::sizes_match(
+    front_types,
+    back_types,
+    ship_ids,
+    invader_bullet_ids,
+    defender_bullet_ids,
+    power_up_ids
+  );
 }
 } // namespace tty_invaders::gameplay
