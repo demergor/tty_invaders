@@ -1,6 +1,5 @@
 ## Work In Progress:
 - write tests for everything major
-- define formations
 - add power ups in-game
 
 ## Future: 

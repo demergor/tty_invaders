@@ -8,6 +8,8 @@
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
+#include "tty_invaders/entities/templates/projectiles.h"
 #include "tty_invaders/entities/templates/ships.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/gameplay/collision_data.h"
@@ -33,6 +35,7 @@ std::string to_string(const std::vector<CollisionData>& collisions) {
 }
 } // namespace
 
+// TODO: Find out why it's throwing
 TEST(CollisionBufferTests, DispatchCollisionsTest) {
   rendering::TermDims bounds {tests::helpers::term_dims(1, 24, 80)};
   CollisionBuffer cb {bounds};
@@ -93,11 +96,14 @@ TEST(CollisionBufferTests, DispatchCollisionsTest) {
   };
 
   entities::Projectiles projectiles {
-    {}, // tl_xs
-    {}, // tl_ys
-    {}, // x_vels
-    {}, // y_vels
-    {}, // bodies
+    std::vector<int>(7, 0), // tl_xs
+    std::vector<int>(7, 0), // tl_ys
+    std::vector<int>(7, 0), // x_vels
+    std::vector<int>(7, 0), // y_vels
+    std::vector<const entities::templates::ProjectileBody*>(
+      7,
+      &entities::templates::bullet
+    ), // bodies
     {entities::EntityType::DefenderBullet,
       entities::EntityType::InvaderBullet,
       entities::EntityType::DefenderBullet,
@@ -111,7 +117,8 @@ TEST(CollisionBufferTests, DispatchCollisionsTest) {
       {effects::CollisionEffect::Effect::Damage, 50},
       {effects::CollisionEffect::Effect::Damage, 50},
       {effects::CollisionEffect::Effect::PowerUp, 1},
-      {effects::CollisionEffect::Effect::PowerUp, 1}} // effects
+      {effects::CollisionEffect::Effect::PowerUp, 1}}, // collision_effects
+    std::vector<effects::StatusEffect>(7, effects::StatusEffect::None) // status_effects
   };
 
   cb.dispatch_collisions(ch, projectiles);

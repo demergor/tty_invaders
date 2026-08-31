@@ -1,0 +1,681 @@
+#include <algorithm>
+#include <cstddef>
+#include <gtest/gtest.h>
+#include <vector>
+
+#include "helpers/setup_helpers.h"
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/effects/status_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/invaders.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/projectile_body.h"
+#include "tty_invaders/entities/templates/projectiles.h"
+#include "tty_invaders/entities/templates/ships.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::entities {
+class InvaderTest : public ::testing::Test {
+protected:
+  Invaders invaders {
+    {&templates::destroyer, &templates::fighter, &templates::speeder},
+    {&templates::bullet, &templates::bullet, &templates::rocket},
+    {10, 20, 30},
+    {10, 10, 10},
+    {100, 100, 100},
+    {0, 0, 0},
+    {effects::StatusEffect::None,
+     effects::StatusEffect::None,
+     effects::StatusEffect::None}
+  };
+
+  Projectiles projectiles;
+};
+
+// NOTE: This test doesn't account for invader movement yet
+TEST_F(InvaderTest, TestInvaderHitboxesAddedToCollisionBuffer) {
+  rendering::TermDims td {tests::helpers::term_dims(1, 50, 80)};
+  gameplay::CollisionBuffer cb {td};
+  invaders.update(cb, projectiles, td);
+
+  std::vector<std::size_t> expected_cb_idxs;
+  for (const auto& [x_offset, y_offset] : templates::destroyer.hitbox_pos) {
+    expected_cb_idxs.emplace_back(
+      (10 + static_cast<std::size_t>(y_offset)) * td.width
+      + (10 + static_cast<std::size_t>(x_offset))
+    );
+  }
+
+  for (const auto& [x_offset, y_offset] : templates::fighter.hitbox_pos) {
+    expected_cb_idxs.emplace_back(
+      (10 + static_cast<std::size_t>(y_offset)) * td.width
+      + (20 + static_cast<std::size_t>(x_offset))
+    );
+  }
+
+  for (const auto& [x_offset, y_offset] : templates::speeder.hitbox_pos) {
+    expected_cb_idxs.emplace_back(
+      (10 + static_cast<std::size_t>(y_offset)) * td.width
+      + (30 + static_cast<std::size_t>(x_offset))
+    );
+  }
+
+  constexpr EntityType expected_entity_type {EntityType::Invader};
+  std::vector<std::size_t> expected_ids {std::vector<std::size_t>(17, 0)};
+
+  for (std::size_t i {0}; i < templates::fighter.hitbox_pos.size(); ++i) {
+    expected_ids.emplace_back(1);
+  }
+
+  for (std::size_t i {0}; i < templates::speeder.hitbox_pos.size(); ++i) {
+    expected_ids.emplace_back(2);
+  }
+
+  ASSERT_EQ(cb.front_types.size(), cb.back_types.size());
+  ASSERT_EQ(cb.front_types.size(), cb.ship_ids.size());
+  ASSERT_EQ(cb.front_types.size(), cb.invader_bullet_ids.size());
+
+  for (std::size_t i {0}; i < expected_cb_idxs.size(); ++i) {
+    ASSERT_EQ(cb.back_types[expected_cb_idxs[i]], expected_entity_type);
+    ASSERT_EQ(cb.ship_ids[expected_cb_idxs[i]], expected_ids[i]);
+  }
+}
+
+TEST_F(InvaderTest, TestInvaderProjectilesAddedToProjectiles) {
+  rendering::TermDims td {tests::helpers::term_dims(24, 1, 80)};
+  gameplay::CollisionBuffer cb {td};
+  invaders.update(cb, projectiles, td);
+
+  std::vector<int> expected_xs {
+    12,
+    10,
+    14, // destroyer
+    21,
+    22,
+    23, // fighter
+    31  // speeder
+  };
+
+  ASSERT_EQ(projectiles.xs.size(), expected_xs.size());
+  for (std::size_t i {0}; i < expected_xs.size(); ++i) {
+    ASSERT_EQ(projectiles.xs[i], expected_xs[i]);
+  }
+
+  std::vector<int> expected_ys {
+    10,
+    11,
+    11, // destroyer
+    10,
+    10,
+    10, // fighter
+    10  // speeder
+  };
+
+  ASSERT_EQ(projectiles.ys.size(), expected_ys.size());
+  for (std::size_t i {0}; i < expected_ys.size(); ++i) {
+    ASSERT_EQ(projectiles.ys[i], expected_ys[i]);
+  }
+
+  ASSERT_TRUE(
+    std::all_of(
+      projectiles.x_vels.begin(),
+      projectiles.x_vels.end(),
+      [](const int val) { return val == 0; }
+    )
+  );
+
+  ASSERT_TRUE(
+    std::all_of(
+      projectiles.y_vels.begin(),
+      projectiles.y_vels.end(),
+      [](const int val) { return val == 1; }
+    )
+  );
+
+  std::vector<const templates::ProjectileBody*> expected_bodies {
+    &templates::bullet,
+    &templates::bullet,
+    &templates::bullet,
+    &templates::bullet,
+    &templates::bullet,
+    &templates::bullet,
+    &templates::rocket
+  };
+
+  ASSERT_EQ(projectiles.bodies.size(), expected_bodies.size());
+  for (std::size_t i {0}; i < expected_bodies.size(); ++i) {
+    ASSERT_EQ(projectiles.bodies[i], expected_bodies[i]);
+  }
+
+  ASSERT_TRUE(
+    std::all_of(
+      projectiles.types.begin(),
+      projectiles.types.end(),
+      [](const EntityType val) { return val == EntityType::InvaderBullet; }
+    )
+  );
+
+  ASSERT_TRUE(
+    std::all_of(
+      projectiles.collision_effects.begin(),
+      projectiles.collision_effects.end(),
+      [](const effects::CollisionEffect val) {
+        return val.type == effects::CollisionEffect::Effect::Damage;
+      }
+    )
+  );
+
+  ASSERT_TRUE(
+    std::all_of(
+      projectiles.collision_effects.begin(),
+      projectiles.collision_effects.end(),
+      [](const effects::CollisionEffect val) {
+        return val.val == opts::game_settings::invader_atk_dmg;
+      }
+    )
+  );
+}
+} // namespace tty_invaders::entities
+#include <gtest/gtest.h>
+
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/opts/game_settings.h"
+
+namespace tty_invaders::entities {
+TEST(EntityTypeTests, DominantTypeTest) {
+  ASSERT_NE(
+    opts::game_settings::entity_type_priority[2],
+    dominant_type(
+      EntityType::None | EntityType::Defender | EntityType::DefenderBullet
+      | EntityType::Invader | EntityType::InvaderBoss | EntityType::InvaderBullet
+      | EntityType::PowerUp | EntityType::Explosion
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[0],
+    dominant_type(
+      EntityType::None | EntityType::Defender | EntityType::DefenderBullet
+      | EntityType::Invader | EntityType::InvaderBoss | EntityType::InvaderBullet
+      | EntityType::PowerUp | EntityType::Explosion
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[1],
+    dominant_type(
+      EntityType::None | EntityType::Defender | EntityType::DefenderBullet
+      | EntityType::Invader | EntityType::InvaderBoss | EntityType::InvaderBullet
+      | EntityType::Explosion
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[2],
+    dominant_type(
+      EntityType::None | EntityType::Defender | EntityType::DefenderBullet
+      | EntityType::Invader | EntityType::InvaderBoss | EntityType::InvaderBullet
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[3],
+    dominant_type(
+      EntityType::None | EntityType::Defender | EntityType::DefenderBullet
+      | EntityType::Invader | EntityType::InvaderBullet
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[4],
+    dominant_type(
+      EntityType::None | EntityType::DefenderBullet | EntityType::Invader
+      | EntityType::InvaderBullet
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[5],
+    dominant_type(
+      EntityType::None | EntityType::DefenderBullet | EntityType::InvaderBullet
+    )
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[6],
+    dominant_type(EntityType::None | EntityType::DefenderBullet)
+  );
+
+  ASSERT_EQ(
+    opts::game_settings::entity_type_priority[7],
+    dominant_type(EntityType::None)
+  );
+}
+} // namespace tty_invaders::entities
+#include <cstddef>
+#include <format>
+#include <gtest/gtest.h>
+#include <string>
+#include <vector>
+
+#include "helpers/setup_helpers.h"
+#include "tty_invaders/effects/collision_effect.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/projectiles.h"
+#include "tty_invaders/entities/templates/ships.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/gameplay/collision_data.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::gameplay {
+namespace {
+std::string to_string(const std::vector<CollisionData>& collisions) {
+  std::string result {"Collision vector contents: {\n"};
+  for (const auto& collision : collisions) {
+    result += std::format(
+      "{{\neffect: {{ type: {}, val: {} }},\n"
+      "target: {},\n"
+      "target_id: {}\n}}",
+      std::to_underlying(collision.effect.type),
+      collision.effect.val,
+      std::to_underlying(collision.target),
+      collision.target_id
+    );
+  }
+
+  return result + "\n}";
+}
+} // namespace
+
+TEST(CollisionBufferTests, DispatchCollisionsTest) {
+  rendering::TermDims bounds {tests::helpers::term_dims(1, 24, 80)};
+  CollisionBuffer cb {bounds};
+  CollisionHandler ch {};
+
+  std::size_t cb_idx {10 * bounds.width + 30};
+  cb.back_types[cb_idx] =
+    entities::EntityType::Defender | entities::EntityType::DefenderBullet;
+  cb.ship_ids[cb_idx] = 0;
+  cb.defender_bullet_ids[cb_idx] = 0;
+
+  cb_idx = 10 * bounds.width + 40;
+  cb.back_types[cb_idx] =
+    entities::EntityType::Defender | entities::EntityType::InvaderBullet;
+  cb.ship_ids[cb_idx] = 0;
+  cb.invader_bullet_ids[cb_idx] = 1;
+
+  cb_idx = 20 * bounds.width + 30;
+  cb.back_types[cb_idx] =
+    entities::EntityType::Invader | entities::EntityType::DefenderBullet;
+  cb.ship_ids[cb_idx] = 0;
+  cb.defender_bullet_ids[cb_idx] = 2;
+
+  cb_idx = 20 * bounds.width + 40;
+  cb.back_types[cb_idx] =
+    entities::EntityType::InvaderBoss | entities::EntityType::DefenderBullet;
+  cb.ship_ids[cb_idx] = 1;
+  cb.defender_bullet_ids[cb_idx] = 3;
+
+  cb_idx = 20 * bounds.width + 50;
+  cb.back_types[cb_idx] =
+    entities::EntityType::Invader | entities::EntityType::InvaderBullet;
+  cb.ship_ids[cb_idx] = 2;
+  cb.invader_bullet_ids[cb_idx] = 4;
+
+  cb_idx = 21 * bounds.width + 40;
+  cb.back_types[cb_idx] = entities::EntityType::Invader | entities::EntityType::PowerUp;
+  cb.ship_ids[cb_idx] = 3;
+  cb.power_up_ids[cb_idx] = 5;
+
+  cb_idx = 21 * bounds.width + 50;
+  cb.back_types[cb_idx] =
+    entities::EntityType::Defender | entities::EntityType::PowerUp;
+  cb.ship_ids[cb_idx] = 0;
+  cb.power_up_ids[cb_idx] = 6;
+
+  // Should be ignored by CollisionHandler
+  cb.back_types[22 * bounds.width + 10] = entities::EntityType::Defender;
+  cb.back_types[22 * bounds.width + 20] = entities::EntityType::Invader;
+  cb.back_types[22 * bounds.width + 30] = entities::EntityType::InvaderBoss;
+  cb.back_types[22 * bounds.width + 40] = entities::EntityType::Explosion;
+
+  std::vector<CollisionData> expected_collision_data {
+    {{effects::CollisionEffect::Effect::Damage, 50}, entities::EntityType::Defender, 0},
+    {{effects::CollisionEffect::Effect::Damage, 50}, entities::EntityType::Invader, 0},
+    {{effects::CollisionEffect::Effect::Damage, 50}, entities::EntityType::Invader, 0},
+    {{effects::CollisionEffect::Effect::PowerUp, 1}, entities::EntityType::Defender, 0},
+  };
+
+  entities::Projectiles projectiles {
+    {}, // tl_xs
+    {}, // tl_ys
+    {}, // x_vels
+    {}, // y_vels
+    {}, // bodies
+    {entities::EntityType::DefenderBullet,
+      entities::EntityType::InvaderBullet,
+      entities::EntityType::DefenderBullet,
+      entities::EntityType::DefenderBullet,
+      entities::EntityType::InvaderBullet,
+      entities::EntityType::PowerUp,
+      entities::EntityType::PowerUp}, // types
+    {{effects::CollisionEffect::Effect::Damage, 50},
+      {effects::CollisionEffect::Effect::Damage, 50},
+      {effects::CollisionEffect::Effect::Damage, 50},
+      {effects::CollisionEffect::Effect::Damage, 50},
+      {effects::CollisionEffect::Effect::Damage, 50},
+      {effects::CollisionEffect::Effect::PowerUp, 1},
+      {effects::CollisionEffect::Effect::PowerUp, 1}} // effects
+  };
+
+  cb.dispatch_collisions(ch, projectiles);
+  ASSERT_EQ(ch.collisions.size(), expected_collision_data.size());
+
+  for (std::size_t i {0}; i < expected_collision_data.size(); ++i) {
+    const auto coll_data_equal {[expected =
+                                    expected_collision_data[i]](const auto& actual) {
+      return expected.effect.type == actual.effect.type
+        && expected.effect.val == actual.effect.val && expected.target == actual.target
+        && expected.target_id == actual.target_id;
+    }};
+
+    ASSERT_NE(
+      std::find_if(ch.collisions.begin(), ch.collisions.end(), coll_data_equal),
+      ch.collisions.end()
+    ) << "Not found for expected collision data at index " + std::to_string(i) + "\n"
+        + to_string(ch.collisions);
+  }
+}
+
+TEST(CollisionBufferTests, AreaContainsTest) {
+  const rendering::TermDims bounds {tests::helpers::term_dims(1, 24, 80)};
+  CollisionBuffer cb {bounds};
+  std::fill(cb.front_types.begin(), cb.front_types.end(), entities::EntityType::None);
+
+  cb.front_types[2 * bounds.width + 30] = entities::EntityType::Defender;
+  cb.front_types[10 * bounds.width + 60] = entities::EntityType::Defender;
+  cb.front_types[13 * bounds.width + 5] = entities::EntityType::DefenderBullet;
+
+  ASSERT_FALSE(cb.area_contains(
+    25,
+    0,
+    entities::templates::destroyer.hitbox_pos,
+    entities::EntityType::Defender,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    26,
+    0,
+    entities::templates::destroyer.hitbox_pos,
+    entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    26,
+    0,
+    entities::templates::destroyer.hitbox_pos,
+    entities::EntityType::Defender,
+    true,
+    bounds
+  ));
+
+  ASSERT_FALSE(cb.area_contains(
+    26,
+    0,
+    entities::templates::destroyer.hitbox_pos,
+    entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_FALSE(cb.area_contains(
+    5,
+    10,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    5,
+    11,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::Defender | entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_TRUE(cb.area_contains(
+    5,
+    11,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::DefenderBullet,
+    true,
+    bounds
+  ));
+
+  ASSERT_FALSE(cb.area_contains(
+    5,
+    11,
+    entities::templates::fighter.hitbox_pos,
+    entities::EntityType::Defender,
+    true,
+    bounds
+  ));
+}
+} // namespace tty_invaders::gameplay
+#include <algorithm>
+#include <gtest/gtest.h>
+
+#include "helpers/setup_helpers.h"
+#include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/rect_coords.h"
+#include "tty_invaders/rendering/rendering.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::rendering {
+TEST(RenderingTests, DirtyAreaFindsSmallestDirtyArea) {
+  TermDims td {tests::helpers::term_dims(1, 24, 80)};
+  tty_invaders::gameplay::CollisionBuffer cb {td};
+  cb.back_types[4 * td.width + 8] = entities::EntityType::Invader;
+  cb.back_types[20 * td.width + 1] = entities::EntityType::Invader;
+  cb.back_types[5 * td.width + 77] = entities::EntityType::Invader;
+
+  const geometry::RectCoords min_rect {dirty_area(cb, td)};
+  ASSERT_EQ(min_rect.tl_x, 1);
+  ASSERT_EQ(min_rect.tl_y, 4);
+  ASSERT_EQ(min_rect.br_x, 78);
+  ASSERT_EQ(min_rect.br_y, 21);
+
+  TermDims td2 {tests::helpers::term_dims(1, 24, 80)};
+  tty_invaders::gameplay::CollisionBuffer cb2 {td2};
+  cb2.back_types[2 * td2.width + 11] = entities::EntityType::Invader;
+  cb2.back_types[2 * td2.width + 12] = entities::EntityType::Invader;
+  cb2.back_types[2 * td2.width + 13] = entities::EntityType::Invader;
+
+  const geometry::RectCoords min_rect2 {dirty_area(cb2, td2)};
+  ASSERT_EQ(min_rect2.tl_x, 11);
+  ASSERT_EQ(min_rect2.tl_y, 2);
+  ASSERT_EQ(min_rect2.br_x, 14);
+  ASSERT_EQ(min_rect2.br_y, 3);
+}
+
+TEST(RenderingTests, DirtyAreaHandlesEmptyDirtyArea) {
+  TermDims td {tests::helpers::term_dims(1, 24, 80)};
+  tty_invaders::gameplay::CollisionBuffer cb {td};
+  std::fill(
+    cb.front_types.begin(),
+    cb.front_types.end(),
+    entities::EntityType::Defender
+  );
+  std::fill(cb.back_types.begin(), cb.back_types.end(), entities::EntityType::Defender);
+
+  const geometry::RectCoords min_rect {dirty_area(cb, td)};
+  ASSERT_TRUE(min_rect.empty());
+}
+
+TEST(RenderingTests, DirtyAreaRespectsTermDimsBounds) {
+  TermDims td {tests::helpers::term_dims(1, 24, 80)};
+
+  tty_invaders::gameplay::CollisionBuffer cb {td};
+  std::fill(cb.back_types.begin(), cb.back_types.end(), entities::EntityType::PowerUp);
+
+  const geometry::RectCoords min_rect {dirty_area(cb, td)};
+  ASSERT_EQ(min_rect.tl_x, 0);
+  ASSERT_EQ(min_rect.tl_y, 0);
+  ASSERT_EQ(min_rect.br_x, 80);
+  ASSERT_EQ(min_rect.br_y, 24);
+
+  for (std::size_t i {0}; i < 10; ++i) {
+    cb.front_types.emplace_back(entities::EntityType::None);
+  }
+
+  for (std::size_t i {0}; i < 10; ++i) {
+    cb.back_types.emplace_back(entities::EntityType::PowerUp);
+  }
+
+  const geometry::RectCoords min_rect2 {dirty_area(cb, td)};
+  ASSERT_EQ(min_rect2.tl_x, 0);
+  ASSERT_EQ(min_rect2.tl_y, 0);
+  ASSERT_EQ(min_rect2.br_x, 80);
+  ASSERT_EQ(min_rect2.br_y, 24);
+}
+} // namespace tty_invaders::rendering
+#include <gtest/gtest.h>
+#include <numeric>
+#include <string_view>
+#include <vector>
+
+#include "tty_invaders/io/term.h"
+#include "tty_invaders/rendering/formatting.h"
+
+namespace tty_invaders::rendering {
+TEST(FormattingTests, AnsiEscapeOmitsObsoleteEscapeSequences) {
+  const auto char_count {[](const auto& inter, const auto& cur) {
+    return inter + cur.size();
+  }};
+
+  Formatting prev {Formatting::BgGreen | Formatting::BrightYellow};
+  Formatting prev_superset {
+    Formatting::BgGreen | Formatting::BrightGreen | Formatting::Red
+    | Formatting::BrightYellow
+  };
+  std::vector<std::string_view> prev_prev_superset_expected {
+    io::term::bright_green,
+    io::term::red
+  };
+
+  std::string prev_prev_superset_actual {ansi_escape(prev, prev_superset)};
+  ASSERT_EQ(
+    prev_prev_superset_actual.size(),
+    std::accumulate(
+      prev_prev_superset_expected.begin(),
+      prev_prev_superset_expected.end(),
+      0u,
+      char_count
+    )
+  );
+
+  for (const auto& formatting_str : prev_prev_superset_expected) {
+    ASSERT_TRUE(prev_prev_superset_actual.contains(formatting_str));
+  }
+
+  Formatting not_prev_superset {
+    Formatting::BgGreen | Formatting::BrightGreen | Formatting::Red | Formatting::Grey
+  };
+
+  std::vector<std::string_view> prev_not_prev_superset_expected {
+    io::term::reset,
+    io::term::bg_green,
+    io::term::bright_green,
+    io::term::red,
+    io::term::grey
+  };
+
+  std::string prev_not_prev_superset_actual {ansi_escape(prev, not_prev_superset)};
+  ASSERT_EQ(
+    prev_not_prev_superset_actual.size(),
+    std::accumulate(
+      prev_not_prev_superset_expected.begin(),
+      prev_not_prev_superset_expected.end(),
+      0u,
+      char_count
+    )
+  );
+
+  for (const auto& formatting_str : prev_not_prev_superset_expected) {
+    ASSERT_TRUE(prev_not_prev_superset_actual.contains(formatting_str));
+  }
+
+  Formatting prev_subset {Formatting::BrightYellow};
+  std::vector<std::string_view> prev_prev_subset_expected {
+    io::term::reset,
+    io::term::bright_yellow
+  };
+
+  std::string prev_prev_subset_actual {ansi_escape(prev, prev_subset)};
+  ASSERT_EQ(
+    prev_not_prev_superset_actual.size(),
+    std::accumulate(
+      prev_not_prev_superset_expected.begin(),
+      prev_not_prev_superset_expected.end(),
+      0u,
+      char_count
+    )
+  );
+
+  for (const auto& formatting_str : prev_not_prev_superset_expected) {
+    ASSERT_TRUE(prev_not_prev_superset_actual.contains(formatting_str));
+  }
+}
+} // namespace tty_invaders::rendering
+#include <gtest/gtest.h>
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
+#ifndef TESTS_HELPERS_SETUP_HELPERS_H
+#define TESTS_HELPERS_SETUP_HELPERS_H
+
+#include <cstddef>
+
+#include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/rendering/term_dims.h"
+
+namespace tty_invaders::tests::helpers {
+inline rendering::TermDims term_dims(
+  const std::size_t bar_height,
+  const std::size_t main_height,
+  const std::size_t width
+) {
+  rendering::TermDims td;
+  td.main_height = main_height;
+  td.bar_height = bar_height;
+  td.width = width;
+  return td;
+}
+
+inline gameplay::CollisionBuffer collision_buffer(
+  const std::size_t height,
+  const std::size_t width
+) {
+  rendering::TermDims td;
+  td.main_height = height;
+  td.width = width;
+
+  gameplay::CollisionBuffer cb {td};
+
+  return cb;
+}
+} // namespace tty_invaders::tests::helpers
+
+#endif // TESTS_HELPERS_SETUP_HELPERS_H
