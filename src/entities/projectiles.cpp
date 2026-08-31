@@ -132,16 +132,30 @@ void Projectiles::populate_coll_buf(
   const rendering::TermDims& bounds
 ) {
   for (std::size_t i {0}; i < xs.size(); ++i) {
-    const auto grid_x {static_cast<std::size_t>(xs[i])};
-    const auto grid_y {static_cast<std::size_t>(ys[i])};
-    std::size_t cb_idx {grid_y * bounds.width + grid_x};
-    cb.back_types[cb_idx] |= types[i];
+    for (auto [x_offset, y_offset] : bodies[i]->points) {
+      const int hitbox_x {xs[i] + x_offset};
+      const int hitbox_y {ys[i] + y_offset};
 
-    switch (types[i]) {
-      case EntityType::DefenderBullet: cb.defender_bullet_ids[cb_idx] = i; break;
-      case EntityType::InvaderBullet: cb.invader_bullet_ids[cb_idx] = i; break;
-      case EntityType::PowerUp: cb.power_up_ids[cb_idx] = i; break;
-      default: std::unreachable();
+      if (hitbox_x < 0 || hitbox_y < 0) {
+        continue;
+      }
+
+      const auto grid_x {static_cast<std::size_t>(hitbox_x)};
+      const auto grid_y {static_cast<std::size_t>(hitbox_y)};
+
+      if (grid_x >= bounds.width || grid_y >= bounds.main_height) {
+        continue;
+      }
+
+      std::size_t cb_idx {grid_y * bounds.width + grid_x};
+      cb.back_types[cb_idx] |= types[i];
+
+      switch (types[i]) {
+        case EntityType::DefenderBullet: cb.defender_bullet_ids[cb_idx] = i; break;
+        case EntityType::InvaderBullet: cb.invader_bullet_ids[cb_idx] = i; break;
+        case EntityType::PowerUp: cb.power_up_ids[cb_idx] = i; break;
+        default: std::unreachable();
+      }
     }
   }
 }

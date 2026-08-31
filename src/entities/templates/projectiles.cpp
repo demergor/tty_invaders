@@ -35,4 +35,7 @@ const ProjectileBody rocket {
   .tl {-1, 0},
   .br {1, 3}
 };
+
+const std::vector<const ProjectileBody*> dmg_projectiles {&bullet, &rocket};
+const std::vector<std::size_t> dmg_projectile_costs {0, 5};
 } // namespace tty_invaders::entities::templates

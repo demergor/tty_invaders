@@ -48,11 +48,14 @@ add_library(
 
   src/gameplay/collision_buffer.cpp
   src/gameplay/collision_handler.cpp
+  src/gameplay/templates/formations.cpp
 
   src/geometry/rect_coords.cpp
 
   src/io/io.cpp
   src/io/raw_term.cpp
+
+  src/random/random.cpp
 
   src/rendering/term_dims.cpp
   src/rendering/rendering.cpp

@@ -1,6 +1,7 @@
 #ifndef TTY_INVADERS_ENTITIES_INVADERS_H
 #define TTY_INVADERS_ENTITIES_INVADERS_H
 
+#include <cstddef>
 #include <vector>
 
 #include "tty_invaders/effects/status_effect.h"
@@ -24,7 +25,8 @@ struct Invaders {
   );
 
   void update(gameplay::CollisionBuffer&, Projectiles&, const rendering::TermDims&);
-  void cleanup();
+  void cleanup(Projectiles&);
+  bool empty() const;
 
   std::vector<const templates::ShipBody*> ship_bodies;
   std::vector<const templates::ProjectileBody*> projectile_bodies;
@@ -43,7 +45,7 @@ private:
   ) const;
   void populate_projectiles(Projectiles&);
   void remove(const std::size_t idx);
-  void assert_sizes_match() const;
+  bool sizes_match() const;
 };
 } // namespace tty_invaders::entities
 

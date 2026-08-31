@@ -9,7 +9,7 @@ namespace tty_invaders::gameplay::templates {
 extern const std::vector<geometry::Point> triangle;
 extern const std::vector<geometry::Point> block;
 
-const std::vector<std::vector<geometry::Point>> formations {triangle, block};
+extern const std::vector<const std::vector<geometry::Point>*> formations;
 } // namespace tty_invaders::gameplay::templates
 
 #endif // TTY_INVADERS_GAMEPLAY_TEMPLATES_FORMATIONS_H

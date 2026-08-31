@@ -10,9 +10,11 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/entities/templates/projectile_body.h"
+#include "tty_invaders/entities/templates/projectiles.h"
 #include "tty_invaders/entities/templates/ship_body.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/random/random.h"
 #include "tty_invaders/rendering/term_dims.h"
 #include "tty_invaders/utility/containers.h"
 
@@ -70,19 +72,6 @@ Invaders::Invaders(
       "Error initializing invaders: Lives-vector contains values < 1!"
     );
   }
-
-  assert(
-    utility::sizes_match(
-      ship_bodies,
-      projectile_bodies,
-      tl_xs,
-      tl_ys,
-      armor,
-      refracts,
-      atk_spds,
-      effects
-    )
-  );
 }
 
 void Invaders::update(
@@ -95,20 +84,57 @@ void Invaders::update(
   populate_projectiles(projectiles);
 }
 
-void Invaders::cleanup() {
+void Invaders::cleanup(Projectiles& projectiles) {
   std::size_t idx {0};
   while (idx < armor.size()) {
-    if (armor[idx] <= 0) {
-      remove(idx);
-    } else {
+    if (armor[idx] > 0) {
       ++idx;
+      continue;
     }
+
+    if (random::random_percent() < opts::game_settings::power_up_drop_chance) {
+      effects::StatusEffect effect {
+        1 << random::random_uint(0, effects::string_data.size() - 2)
+      };
+
+      // TODO: Implement homing
+      effect = effect == effects::StatusEffect::Homing
+        ? effects::StatusEffect::DoubleAtkSpd
+        : effect;
+
+      projectiles.add(
+        tl_xs[idx],
+        tl_ys[idx],
+        0,
+        1,
+        &templates::power_up,
+        EntityType::PowerUp,
+        {effects::CollisionEffect::Effect::PowerUp, static_cast<int>(effect)},
+        effect
+      );
+    }
+
+    remove(idx);
   }
+
+  assert(sizes_match());
 }
 
-// TODO: Implement
+bool Invaders::empty() const {
+  assert(sizes_match());
+  return ship_bodies.empty();
+}
+
 void Invaders::move(const rendering::TermDims& bounds) {
-  return;
+  if (
+    empty() || std::cmp_less_equal(bounds.width, *std::ranges::max_element(tl_xs) + 10)
+  ) {
+    return;
+  }
+
+  std::ranges::for_each(tl_xs, [](auto& x) {
+    ++x;
+  });
 }
 
 void Invaders::populate_collision_buffer(
@@ -195,17 +221,19 @@ void Invaders::remove(const std::size_t idx) {
   effects[idx] = effects.back();
   effects.pop_back();
 
-  assert(
-    utility::sizes_match(
-      ship_bodies,
-      projectile_bodies,
-      tl_xs,
-      tl_ys,
-      armor,
-      refracts,
-      atk_spds,
-      effects
-    )
+  assert(sizes_match());
+}
+
+bool Invaders::sizes_match() const {
+  return utility::sizes_match(
+    ship_bodies,
+    projectile_bodies,
+    tl_xs,
+    tl_ys,
+    armor,
+    refracts,
+    atk_spds,
+    effects
   );
 }
 } // namespace tty_invaders::entities

@@ -3,6 +3,7 @@
 
 #include <array>
 #include <chrono>
+#include <random>
 
 #include "tty_invaders/entities/entity_type.h"
 
@@ -21,15 +22,17 @@ constexpr char heart {'@'};
 constexpr double high_percentage {100.0};
 constexpr double mid_percentage {70.0};
 constexpr double low_percentage {30.0};
+constexpr double power_up_drop_chance {low_percentage};
 
 constexpr int defender_lives {3};
 constexpr int defender_armor {100};
 constexpr int defender_atk_freq {10};
 constexpr int defender_atk_dmg {25};
 
-constexpr int invader_level_seed {0};
-constexpr int invader_atk_freq {25};
+constexpr std::random_device::result_type invader_level_seed {0};
+constexpr int invader_atk_freq {70};
 constexpr int invader_atk_dmg {5};
+constexpr int invader_armor {100};
 
 constexpr int defender_mov_spd {1};
 

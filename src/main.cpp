@@ -10,21 +10,22 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/invaders.h"
 #include "tty_invaders/entities/projectiles.h"
-#include "tty_invaders/entities/templates/projectiles.h"
 #include "tty_invaders/entities/templates/ships.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
 #include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/io/io.h"
 #include "tty_invaders/io/key_press.h"
 #include "tty_invaders/io/raw_term.h"
+#include "tty_invaders/io/term.h"
 #include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/random/random.h"
 #include "tty_invaders/rendering/rendering.h"
 #include "tty_invaders/rendering/term_dims.h"
 
 using namespace tty_invaders;
 
 int main() {
-  int level {0};
+  int level {1};
   io::RawTerm raw_term {};
   rendering::TermDims bounds {};
   gameplay::CollisionBuffer cb {bounds};
@@ -39,18 +40,9 @@ int main() {
   defender.tl_x = static_cast<int>(bounds.width / 2);
   defender.tl_y = static_cast<int>(bounds.main_height - bounds.bar_height - 1)
     - (defender.body->br_y);
-  defender.effect = tty_invaders::effects::StatusEffect::None;
+  defender.effect = effects::StatusEffect::None;
 
-  entities::Invaders invaders {
-    std::vector(2, &entities::templates::fighter),
-    std::vector(2, &entities::templates::bullet),
-    std::vector {10, 20},
-    std::vector(2, 0),
-    std::vector(2, 100),
-    std::vector(2, 10),
-    std::vector(2, effects::StatusEffect::None)
-  };
-  // entities::Invaders invaders {random::generate_invaders(level)};
+  entities::Invaders invaders {random::generate_invaders(level)};
 
   entities::Projectiles projectiles {};
   auto last_tick {std::chrono::steady_clock::now()};
@@ -67,7 +59,7 @@ int main() {
   cb.dispatch_collisions(ch, projectiles);
   ch.handle_collisions(defender, invaders);
   defender.cleanup(projectiles, opts::game_settings::tick_rate);
-  invaders.cleanup();
+  invaders.cleanup(projectiles);
   rendering::render_main(cb, bounds);
   rendering::render_bar(defender, bounds);
   std::swap(cb.front_types, cb.back_types);
@@ -91,20 +83,30 @@ int main() {
       cb.dispatch_collisions(ch, projectiles);
       ch.handle_collisions(defender, invaders);
       defender.cleanup(projectiles, opts::game_settings::tick_rate);
-      invaders.cleanup();
+      invaders.cleanup(projectiles);
       time_diff -= opts::game_settings::tick_rate;
       updated = true;
     }
 
-    if (updated) {
-      last_tick = now - time_diff;
-      rendering::render_main(cb, bounds);
-      rendering::render_bar(defender, bounds);
-      std::swap(cb.front_types, cb.back_types);
-      cb.clear_back();
-      std::cout.flush();
+    if (!updated) {
+      std::this_thread::sleep_for(std::chrono::milliseconds {1});
+      continue;
     }
 
+    if (invaders.empty()) {
+      invaders = random::generate_invaders(++level);
+    }
+
+    last_tick = now - time_diff;
+    rendering::render_main(cb, bounds);
+    rendering::render_bar(defender, bounds);
+    std::swap(cb.front_types, cb.back_types);
+    cb.clear_back();
+
+    std::cout << io::term::cursor_home << io::term::yellow << "Level " << level
+              << io::term::reset;
+
+    std::cout.flush();
     std::this_thread::sleep_for(std::chrono::milliseconds {1});
   }
 

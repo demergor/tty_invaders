@@ -66,4 +66,6 @@ const std::vector<geometry::Point> block {
   {-10, 40},
   {0, 40},
 };
+
+const std::vector<const std::vector<geometry::Point>*> formations {&triangle, &block};
 } // namespace tty_invaders::gameplay::templates

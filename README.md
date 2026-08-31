@@ -1,9 +1,7 @@
 ## Work In Progress:
 - write tests for everything major
-- add power ups in-game
+- implement homing effect
 
 ## Future: 
 - add differently oriented ship bodies/bullets
-- add levels
-- develop pseudo-random level generation
 - add bosses

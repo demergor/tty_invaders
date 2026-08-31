@@ -10,8 +10,8 @@ extern const ProjectileBody bullet;
 extern const ProjectileBody power_up;
 extern const ProjectileBody rocket;
 
-const std::vector<const ProjectileBody*> dmg_projectiles {&bullet, &rocket};
-const std::vector<std::size_t> dmg_projectile_costs {0, 5};
+extern const std::vector<const ProjectileBody*> dmg_projectiles;
+extern const std::vector<std::size_t> dmg_projectile_costs;
 } // namespace tty_invaders::entities::templates
 
 #endif // TTY_INVADERS_ENTITIES_TEMPLATES_PROJECTILES_H

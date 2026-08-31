@@ -68,4 +68,11 @@ const ShipBody speeder {
   .br_x = 2,
   .br_y = 2
 };
+
+const std::vector<const ShipBody*> ships {&destroyer, &fighter, &speeder};
+const std::vector<std::size_t> ship_costs {
+  destroyer.cannon_pos.size(),
+  fighter.cannon_pos.size(),
+  0 // speeder.cannon_pos.size()
+};
 } // namespace tty_invaders::entities::templates
