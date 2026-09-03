@@ -38,7 +38,7 @@ struct Projectiles {
   std::vector<effects::StatusEffect> status_effects;
 
 private:
-  void move(const rendering::TermDims&);
+  void move(const gameplay::CollisionBuffer&, const rendering::TermDims&);
   void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&);
   bool vec_sizes_match() const;
 };

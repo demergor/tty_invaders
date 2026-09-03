@@ -1,5 +1,6 @@
 #include "tty_invaders/entities/projectiles.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <stdexcept>
@@ -9,6 +10,8 @@
 #include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
+#include "tty_invaders/geometry/rect_coords.h"
+#include "tty_invaders/opts/game_settings.h"
 #include "tty_invaders/rendering/term_dims.h"
 #include "tty_invaders/utility/containers.h"
 
@@ -17,7 +20,7 @@ void Projectiles::update(
   gameplay::CollisionBuffer& cb,
   const rendering::TermDims& bounds
 ) {
-  move(bounds);
+  move(cb, bounds);
   populate_coll_buf(cb, bounds);
 }
 
@@ -56,7 +59,10 @@ void Projectiles::clear() {
   assert(vec_sizes_match());
 }
 
-void Projectiles::move(const rendering::TermDims& bounds) {
+void Projectiles::move(
+  const gameplay::CollisionBuffer& cb,
+  const rendering::TermDims& bounds
+) {
   const auto width {static_cast<int>(bounds.width)};
   const auto height {static_cast<int>(bounds.main_height)};
   std::size_t idx {0};
@@ -74,6 +80,61 @@ void Projectiles::move(const rendering::TermDims& bounds) {
       continue;
     }
 
+    if (status_effects[idx] != effects::StatusEffect::Homing) {
+      ++idx;
+      continue;
+    }
+
+    assert(xs[idx] >= 0);
+    assert(ys[idx] >= 0);
+
+    const geometry::RectCoords search_box {
+      .tl_x = static_cast<std::size_t>(std::clamp(
+        xs[idx] - opts::game_settings::homing_search_radius,
+        0,
+        static_cast<int>(bounds.width)
+      )),
+      .tl_y = static_cast<std::size_t>(std::clamp(
+        ys[idx] - opts::game_settings::homing_search_radius,
+        0,
+        static_cast<int>(bounds.width)
+      )),
+      .br_x = static_cast<std::size_t>(std::clamp(
+        xs[idx] + opts::game_settings::homing_search_radius,
+        0,
+        static_cast<int>(bounds.width)
+      )),
+      .br_y = static_cast<std::size_t>(std::clamp(
+        ys[idx] + opts::game_settings::homing_search_radius,
+        0,
+        static_cast<int>(bounds.width)
+      )),
+    };
+
+    EntityType target_type {
+      types[idx] == EntityType::DefenderBullet
+        ? EntityType::Invader | EntityType::InvaderBoss
+        : EntityType::Defender
+    };
+
+    if (!cb.area_contains(
+          search_box,
+          target_type,
+          false,
+          bounds
+        )) {
+      ++idx;
+      continue;
+    }
+
+    geometry::Point nearest_target {cb.find_nearest(
+      {xs[idx], ys[idx]},
+      target_type,
+      bounds
+    )};
+
+    x_vels[idx] = std::clamp(nearest_target.x - x_vels[idx], -1, 1);
+    y_vels[idx] = std::clamp(nearest_target.y - y_vels[idx], -1, 1);
     ++idx;
   }
 

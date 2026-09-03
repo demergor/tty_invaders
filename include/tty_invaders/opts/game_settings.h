@@ -38,6 +38,8 @@ constexpr int defender_mov_spd {1};
 
 constexpr int action_bar_height {2};
 
+constexpr int homing_search_radius {10};
+
 constexpr std::chrono::milliseconds status_effect_duration {10'000};
 constexpr std::chrono::milliseconds tick_rate {50};
 

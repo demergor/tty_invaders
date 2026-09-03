@@ -7,6 +7,7 @@
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/gameplay/collision_handler.h"
 #include "tty_invaders/geometry/point.h"
+#include "tty_invaders/geometry/rect_coords.h"
 #include "tty_invaders/rendering/term_dims.h"
 
 namespace tty_invaders::entities {
@@ -26,6 +27,17 @@ struct CollisionBuffer {
     const std::vector<geometry::Point>& offsets,
     entities::EntityType type,
     const bool front,
+    const rendering::TermDims& bounds
+  ) const;
+  bool area_contains(
+    const geometry::RectCoords& box,
+    entities::EntityType type,
+    const bool front,
+    const rendering::TermDims& bounds
+  ) const;
+  geometry::Point find_nearest(
+    geometry::Point start,
+    entities::EntityType type,
     const rendering::TermDims& bounds
   ) const;
   void clear_back();

@@ -97,11 +97,6 @@ void Invaders::cleanup(Projectiles& projectiles) {
         1 << random::random_uint(0, effects::string_data.size() - 2)
       };
 
-      // TODO: Implement homing
-      effect = effect == effects::StatusEffect::Homing
-        ? effects::StatusEffect::DoubleAtkSpd
-        : effect;
-
       projectiles.add(
         tl_xs[idx],
         tl_ys[idx],
