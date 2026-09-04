@@ -3,24 +3,26 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
 #include "tty_invaders/effects/collision_effect.h"
 #include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
+#include "tty_invaders/entities/invaders.h"
 #include "tty_invaders/gameplay/collision_buffer.h"
-#include "tty_invaders/geometry/rect_coords.h"
-#include "tty_invaders/opts/game_settings.h"
+#include "tty_invaders/geometry/point.h"
 #include "tty_invaders/rendering/term_dims.h"
 #include "tty_invaders/utility/containers.h"
 
 namespace tty_invaders::entities {
 void Projectiles::update(
   gameplay::CollisionBuffer& cb,
+  const Invaders& invaders,
   const rendering::TermDims& bounds
 ) {
-  move(cb, bounds);
+  move(invaders, bounds);
   populate_coll_buf(cb, bounds);
 }
 
@@ -59,14 +61,11 @@ void Projectiles::clear() {
   assert(vec_sizes_match());
 }
 
-void Projectiles::move(
-  const gameplay::CollisionBuffer& cb,
-  const rendering::TermDims& bounds
-) {
+void Projectiles::move(const Invaders& invaders, const rendering::TermDims& bounds) {
   const auto width {static_cast<int>(bounds.width)};
   const auto height {static_cast<int>(bounds.main_height)};
-  std::size_t idx {0};
 
+  std::size_t idx {0};
   while (idx < xs.size()) {
     xs[idx] += x_vels[idx];
     if (xs[idx] >= width || xs[idx] < 0) {
@@ -88,53 +87,23 @@ void Projectiles::move(
     assert(xs[idx] >= 0);
     assert(ys[idx] >= 0);
 
-    const geometry::RectCoords search_box {
-      .tl_x = static_cast<std::size_t>(std::clamp(
-        xs[idx] - opts::game_settings::homing_search_radius,
-        0,
-        static_cast<int>(bounds.width)
-      )),
-      .tl_y = static_cast<std::size_t>(std::clamp(
-        ys[idx] - opts::game_settings::homing_search_radius,
-        0,
-        static_cast<int>(bounds.width)
-      )),
-      .br_x = static_cast<std::size_t>(std::clamp(
-        xs[idx] + opts::game_settings::homing_search_radius,
-        0,
-        static_cast<int>(bounds.width)
-      )),
-      .br_y = static_cast<std::size_t>(std::clamp(
-        ys[idx] + opts::game_settings::homing_search_radius,
-        0,
-        static_cast<int>(bounds.width)
-      )),
-    };
+    auto min_dist {std::numeric_limits<int>::max()};
+    for (std::size_t i {0}; i < invaders.tl_xs.size(); ++i) {
+      const std::size_t middle_idx {invaders.ship_bodies[i]->hitbox_pos.size() / 2};
+      geometry::Point middle_hitpoint {invaders.ship_bodies[i]->hitbox_pos[middle_idx]};
+      int xs_diff {invaders.tl_xs[i] + middle_hitpoint.x - xs[idx]};
+      int ys_diff {invaders.tl_ys[i] + middle_hitpoint.y - ys[idx]};
+      int cur_dist {std::abs(xs_diff) + std::abs(ys_diff)};
 
-    EntityType target_type {
-      types[idx] == EntityType::DefenderBullet
-        ? EntityType::Invader | EntityType::InvaderBoss
-        : EntityType::Defender
-    };
+      if (cur_dist >= min_dist) {
+        continue;
+      }
 
-    if (!cb.area_contains(
-          search_box,
-          target_type,
-          false,
-          bounds
-        )) {
-      ++idx;
-      continue;
+      x_vels[idx] = std::clamp(xs_diff, -1, 1);
+      y_vels[idx] = std::clamp(ys_diff, -1, 1);
+      min_dist = cur_dist;
     }
 
-    geometry::Point nearest_target {cb.find_nearest(
-      {xs[idx], ys[idx]},
-      target_type,
-      bounds
-    )};
-
-    x_vels[idx] = std::clamp(nearest_target.x - x_vels[idx], -1, 1);
-    y_vels[idx] = std::clamp(nearest_target.y - y_vels[idx], -1, 1);
     ++idx;
   }
 

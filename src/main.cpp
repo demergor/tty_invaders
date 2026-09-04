@@ -5,7 +5,6 @@
 #include <utility>
 #include <vector>
 
-#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/defender.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/invaders.h"
@@ -40,7 +39,7 @@ int main() {
   defender.tl_x = static_cast<int>(bounds.width / 2);
   defender.tl_y = static_cast<int>(bounds.main_height - bounds.bar_height - 1)
     - (defender.body->br_y);
-  defender.effect = effects::StatusEffect::Homing;
+  defender.effect = effects::StatusEffect::Laser;
 
   entities::Invaders invaders {random::generate_invaders(level)};
 
@@ -55,7 +54,7 @@ int main() {
 
   defender.update(cb, projectiles, bounds);
   invaders.update(cb, projectiles, bounds);
-  projectiles.update(cb, bounds);
+  projectiles.update(cb, invaders, bounds);
   cb.dispatch_collisions(ch, projectiles);
   ch.handle_collisions(defender, invaders);
   defender.cleanup(projectiles, opts::game_settings::tick_rate);
@@ -79,7 +78,7 @@ int main() {
     while (time_diff >= opts::game_settings::tick_rate) {
       defender.update(cb, projectiles, bounds);
       invaders.update(cb, projectiles, bounds);
-      projectiles.update(cb, bounds);
+      projectiles.update(cb, invaders, bounds);
       cb.dispatch_collisions(ch, projectiles);
       ch.handle_collisions(defender, invaders);
       defender.cleanup(projectiles, opts::game_settings::tick_rate);
@@ -107,7 +106,7 @@ int main() {
               << io::term::reset;
 
     std::cout.flush();
-    std::this_thread::sleep_for(std::chrono::milliseconds {1});
+    std::this_thread::sleep_for(std::chrono::microseconds {500});
   }
 
   return 0;

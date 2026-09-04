@@ -13,7 +13,7 @@
 
 namespace tty_invaders::entities {
 struct Projectiles {
-  void update(gameplay::CollisionBuffer&, const rendering::TermDims&);
+  void update(gameplay::CollisionBuffer&, const Invaders&, const rendering::TermDims&);
   void add(
     const int tl_x,
     const int tl_y,
@@ -38,7 +38,7 @@ struct Projectiles {
   std::vector<effects::StatusEffect> status_effects;
 
 private:
-  void move(const gameplay::CollisionBuffer&, const rendering::TermDims&);
+  void move(const Invaders&, const rendering::TermDims&);
   void populate_coll_buf(gameplay::CollisionBuffer&, const rendering::TermDims&);
   bool vec_sizes_match() const;
 };

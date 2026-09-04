@@ -24,6 +24,7 @@ constexpr double mid_percentage {70.0};
 constexpr double low_percentage {30.0};
 constexpr double power_up_drop_chance {low_percentage};
 
+constexpr int defender_mov_dist {2};
 constexpr int defender_lives {3};
 constexpr int defender_armor {100};
 constexpr int defender_atk_freq {10};
@@ -41,7 +42,7 @@ constexpr int action_bar_height {2};
 constexpr int homing_search_radius {10};
 
 constexpr std::chrono::milliseconds status_effect_duration {10'000};
-constexpr std::chrono::milliseconds tick_rate {50};
+constexpr std::chrono::milliseconds tick_rate {40};
 
 constexpr std::array entity_type_priority {
   entities::EntityType::PowerUp,

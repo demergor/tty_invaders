@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <queue>
 #include <stdexcept>
 #include <vector>
 
+#include "tty_invaders/effects/status_effect.h"
 #include "tty_invaders/entities/entity_type.h"
 #include "tty_invaders/entities/projectiles.h"
 #include "tty_invaders/gameplay/collision_handler.h"
@@ -131,98 +131,6 @@ bool CollisionBuffer::area_contains(
   }
 
   return false;
-}
-
-bool CollisionBuffer::area_contains(
-  const geometry::RectCoords& box,
-  entities::EntityType type,
-  const bool front,
-  const rendering::TermDims& bounds
-) const {
-  const auto& types {front ? front_types : back_types};
-  for (std::size_t y {box.tl_y}; y < box.br_y; y += bounds.width) {
-    for (std::size_t x {box.tl_x}; x < box.br_y; ++x) {
-      if (intersects(types[y + x], type)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-geometry::Point CollisionBuffer::find_nearest(
-  geometry::Point start,
-  entities::EntityType type,
-  const rendering::TermDims& bounds
-) const {
-  struct BfsInfo {
-    geometry::Point pos;
-    int x_vel;
-    int y_vel;
-  };
-
-  if (start.x < 0 || start.y < 0) {
-    return start;
-  }
-
-  std::queue<BfsInfo> queue;
-  queue.emplace(geometry::Point {start.x, start.y - 1}, 0, -1);      // up
-  queue.emplace(geometry::Point {start.x + 1, start.y - 1}, 1, -1);  // right up
-  queue.emplace(geometry::Point {start.x + 1, start.y}, 1, 0);       // right
-  queue.emplace(geometry::Point {start.x + 1, start.y + 1}, 1, 1);   // right down
-  queue.emplace(geometry::Point {start.x, start.y + 1}, 0, 1);       // down
-  queue.emplace(geometry::Point {start.x - 1, start.y + 1}, -1, 1);  // left down
-  queue.emplace(geometry::Point {start.x - 1, start.y}, -1, 0);      // left
-  queue.emplace(geometry::Point {start.x - 1, start.y - 1}, -1, -1); // left up
-
-  const auto width {static_cast<int>(bounds.width)};
-  const auto height {static_cast<int>(bounds.main_height)};
-
-  while (!queue.empty()) {
-    auto cur {queue.front()};
-    queue.pop();
-
-    if (cur.pos.x < 0 || cur.pos.y < 0) {
-      continue;
-    }
-
-    if (cur.pos.x >= width || cur.pos.y >= height) {
-      continue;
-    }
-
-    const auto cb_idx {static_cast<std::size_t>(cur.pos.y * width + cur.pos.x)};
-    if (intersects(back_types[cb_idx], type)) {
-      return cur.pos;
-    }
-
-    if (!cur.x_vel || !cur.y_vel) {
-      // TODO: remove after debugging
-      // back_types[cb_idx] = entities::EntityType::Explosion;
-      cur.pos.x += cur.x_vel;
-      cur.pos.y += cur.y_vel;
-      queue.emplace(cur);
-      continue;
-    }
-
-    queue.emplace(
-      geometry::Point {cur.pos.x + cur.x_vel, cur.pos.y},
-      cur.x_vel,
-      cur.y_vel
-    );
-
-    queue.emplace(
-      geometry::Point {cur.pos.x, cur.pos.y + cur.y_vel},
-      cur.x_vel,
-      cur.y_vel
-    );
-
-    cur.pos.x += cur.x_vel;
-    cur.pos.y += cur.y_vel;
-    queue.emplace(cur);
-  }
-
-  return start;
 }
 
 void CollisionBuffer::clear_back() {

@@ -105,7 +105,7 @@ void Invaders::cleanup(Projectiles& projectiles) {
         &templates::power_up,
         EntityType::PowerUp,
         {effects::CollisionEffect::Effect::PowerUp, static_cast<int>(effect)},
-        effect
+        effects::StatusEffect::None
       );
     }
 

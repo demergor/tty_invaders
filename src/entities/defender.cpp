@@ -51,18 +51,18 @@ void Defender::move(
 
   if (kp.type == io::KeyPress::Type::Arrow) {
     switch (kp.arrow) {
-      case io::ctrls::ArrowDirection::Up: y_vel = -1; break;
-      case io::ctrls::ArrowDirection::Down: y_vel = 1; break;
-      case io::ctrls::ArrowDirection::Right: x_vel = 1; break;
-      case io::ctrls::ArrowDirection::Left: x_vel = -1; break;
+      case io::ctrls::ArrowDirection::Up: y_vel = -opts::game_settings::defender_mov_dist; break;
+      case io::ctrls::ArrowDirection::Down: y_vel = opts::game_settings::defender_mov_dist; break;
+      case io::ctrls::ArrowDirection::Right: x_vel = opts::game_settings::defender_mov_dist; break;
+      case io::ctrls::ArrowDirection::Left: x_vel = -opts::game_settings::defender_mov_dist; break;
       default: std::unreachable();
     }
   } else {
     switch (kp.ch) {
-      case opts::game_settings::movement::up: y_vel = -1; break;
-      case opts::game_settings::movement::down: y_vel = 1; break;
-      case opts::game_settings::movement::right: x_vel = 1; break;
-      case opts::game_settings::movement::left: x_vel = -1; break;
+      case opts::game_settings::movement::up: y_vel = -opts::game_settings::defender_mov_dist; break;
+      case opts::game_settings::movement::down: y_vel = opts::game_settings::defender_mov_dist; break;
+      case opts::game_settings::movement::right: x_vel = opts::game_settings::defender_mov_dist; break;
+      case opts::game_settings::movement::left: x_vel = -opts::game_settings::defender_mov_dist; break;
       default: return;
     }
   }
@@ -117,11 +117,13 @@ void Defender::cleanup(Projectiles& projectiles, std::chrono::milliseconds delta
     ? effects::StatusEffect::None
     : effect;
 
-  if (
-    prev_effect == effects::StatusEffect::Laser && effect == effects::StatusEffect::None
-  ) {
-    projectiles.remove(effects::StatusEffect::Laser);
+  if (effect != effects::StatusEffect::None) {
+    return;
   }
+
+  if (prev_effect == effects::StatusEffect::Laser) {
+    projectiles.remove(effects::StatusEffect::Laser);
+  } 
 }
 
 void Defender::populate_coll_buf(
@@ -199,10 +201,6 @@ void Defender::populate_projectiles(Projectiles& projectiles) {
       );
 
       last_tick.was_laser = false;
-      continue;
-    }
-
-    if (leave_laser) {
       continue;
     }
 
