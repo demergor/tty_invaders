@@ -91,8 +91,18 @@ void Projectiles::move(const Invaders& invaders, const rendering::TermDims& boun
     for (std::size_t i {0}; i < invaders.tl_xs.size(); ++i) {
       const std::size_t middle_idx {invaders.ship_bodies[i]->hitbox_pos.size() / 2};
       geometry::Point middle_hitpoint {invaders.ship_bodies[i]->hitbox_pos[middle_idx]};
-      int xs_diff {invaders.tl_xs[i] + middle_hitpoint.x - xs[idx]};
-      int ys_diff {invaders.tl_ys[i] + middle_hitpoint.y - ys[idx]};
+      int hitbox_x {invaders.tl_xs[i] + middle_hitpoint.x};
+      int hitbox_y {invaders.tl_ys[i] + middle_hitpoint.y};
+
+      if (
+        hitbox_x < 0 || static_cast<std::size_t>(hitbox_x) >= bounds.width
+        || hitbox_y < 0 || static_cast<std::size_t>(hitbox_y) >= bounds.main_height
+      ) {
+        continue;
+      }
+
+      int xs_diff {hitbox_x - xs[idx]};
+      int ys_diff {hitbox_y - ys[idx]};
       int cur_dist {std::abs(xs_diff) + std::abs(ys_diff)};
 
       if (cur_dist >= min_dist) {
