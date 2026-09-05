@@ -6,6 +6,7 @@
 
 namespace tty_invaders::random {
 double random_percent();
+int random_int(int lower_incl, int upper_incl);
 std::size_t random_uint(std::size_t lower_incl, std::size_t upper_incl);
 entities::Invaders generate_invaders(int level);
 } // namespace tty_invaders::random

@@ -39,7 +39,7 @@ int main() {
   defender.tl_x = static_cast<int>(bounds.width / 2);
   defender.tl_y = static_cast<int>(bounds.main_height - bounds.bar_height - 1)
     - (defender.body->br_y);
-  defender.effect = effects::StatusEffect::Laser;
+  defender.effect = effects::StatusEffect::None;
 
   entities::Invaders invaders {random::generate_invaders(level)};
 

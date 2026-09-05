@@ -46,6 +46,8 @@ private:
   void populate_projectiles(Projectiles&);
   void remove(const std::size_t idx);
   bool sizes_match() const;
+
+  int move_refrac {0};
 };
 } // namespace tty_invaders::entities
 

@@ -134,12 +134,8 @@ void Projectiles::remove(effects::StatusEffect effect) {
 }
 
 void Projectiles::remove(std::size_t idx) {
-  if (idx >= xs.size()) {
-    throw std::runtime_error(
-      "Error removing projectile: Index is out of bounds!\nIndex: "
-      + std::to_string(idx) + "\nSize: " + std::to_string(xs.size())
-    );
-  }
+  assert (!xs.empty());
+  assert (idx < xs.size());
 
   xs[idx] = xs.back();
   xs.pop_back();

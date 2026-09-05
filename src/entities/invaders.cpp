@@ -121,15 +121,34 @@ bool Invaders::empty() const {
 }
 
 void Invaders::move(const rendering::TermDims& bounds) {
-  if (
-    empty() || std::cmp_less_equal(bounds.width, *std::ranges::max_element(tl_xs) + 10)
-  ) {
+  if (empty()) {
     return;
   }
 
-  std::ranges::for_each(tl_xs, [](auto& x) {
-    ++x;
+  if (std::cmp_greater(bounds.width, *std::ranges::max_element(tl_xs) + 10)) {
+    std::ranges::for_each(tl_xs, [](auto& x) {
+      ++x;
+    });
+    return;
+  }
+
+  if (++move_refrac <= opts::game_settings::invader_move_freq) {
+    return;
+  }
+
+  move_refrac = 0;
+  std::ranges::for_each(tl_xs, [width = static_cast<int>(bounds.width)](auto& x) {
+    x += random::random_int(-1, 1);
+    x = std::clamp(x, 0, width - 1);
   });
+
+  std::ranges::for_each(
+    tl_ys,
+    [height = static_cast<int>(bounds.main_height)](auto& y) {
+      y += random::random_int(-1, 1);
+      y = std::clamp(y, 0, height - 1);
+    }
+  );
 }
 
 void Invaders::populate_collision_buffer(

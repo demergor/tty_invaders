@@ -22,6 +22,13 @@ double random_percent() {
   return dist(rng);
 }
 
+int random_int (int lower_incl, int upper_incl) {
+  static std::mt19937 rng {opts::game_settings::invader_level_seed};
+  std::uniform_int_distribution<int> dist {lower_incl, upper_incl};
+
+  return dist(rng);
+}
+
 std::size_t random_uint(std::size_t lower_incl, std::size_t upper_incl) {
   static std::mt19937 rng {opts::game_settings::invader_level_seed};
   std::uniform_int_distribution<std::size_t> dist {lower_incl, upper_incl};

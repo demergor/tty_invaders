@@ -34,6 +34,7 @@ constexpr std::random_device::result_type invader_level_seed {0};
 constexpr int invader_atk_freq {70};
 constexpr int invader_atk_dmg {5};
 constexpr int invader_armor {100};
+constexpr int invader_move_freq {5};
 
 constexpr int defender_mov_spd {1};
 

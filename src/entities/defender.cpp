@@ -51,18 +51,34 @@ void Defender::move(
 
   if (kp.type == io::KeyPress::Type::Arrow) {
     switch (kp.arrow) {
-      case io::ctrls::ArrowDirection::Up: y_vel = -opts::game_settings::defender_mov_dist; break;
-      case io::ctrls::ArrowDirection::Down: y_vel = opts::game_settings::defender_mov_dist; break;
-      case io::ctrls::ArrowDirection::Right: x_vel = opts::game_settings::defender_mov_dist; break;
-      case io::ctrls::ArrowDirection::Left: x_vel = -opts::game_settings::defender_mov_dist; break;
+      case io::ctrls::ArrowDirection::Up:
+        y_vel = -opts::game_settings::defender_mov_dist;
+        break;
+      case io::ctrls::ArrowDirection::Down:
+        y_vel = opts::game_settings::defender_mov_dist;
+        break;
+      case io::ctrls::ArrowDirection::Right:
+        x_vel = opts::game_settings::defender_mov_dist;
+        break;
+      case io::ctrls::ArrowDirection::Left:
+        x_vel = -opts::game_settings::defender_mov_dist;
+        break;
       default: std::unreachable();
     }
   } else {
     switch (kp.ch) {
-      case opts::game_settings::movement::up: y_vel = -opts::game_settings::defender_mov_dist; break;
-      case opts::game_settings::movement::down: y_vel = opts::game_settings::defender_mov_dist; break;
-      case opts::game_settings::movement::right: x_vel = opts::game_settings::defender_mov_dist; break;
-      case opts::game_settings::movement::left: x_vel = -opts::game_settings::defender_mov_dist; break;
+      case opts::game_settings::movement::up:
+        y_vel = -opts::game_settings::defender_mov_dist;
+        break;
+      case opts::game_settings::movement::down:
+        y_vel = opts::game_settings::defender_mov_dist;
+        break;
+      case opts::game_settings::movement::right:
+        x_vel = opts::game_settings::defender_mov_dist;
+        break;
+      case opts::game_settings::movement::left:
+        x_vel = -opts::game_settings::defender_mov_dist;
+        break;
       default: return;
     }
   }
@@ -123,7 +139,7 @@ void Defender::cleanup(Projectiles& projectiles, std::chrono::milliseconds delta
 
   if (prev_effect == effects::StatusEffect::Laser) {
     projectiles.remove(effects::StatusEffect::Laser);
-  } 
+  }
 }
 
 void Defender::populate_coll_buf(
@@ -164,9 +180,14 @@ void Defender::populate_projectiles(Projectiles& projectiles) {
   };
 
   int cur_atk_spd {atk_spd};
+  int cur_atk_dmg {opts::game_settings::defender_atk_dmg};
+
   switch (effect) {
     case effects::StatusEffect::DoubleAtkSpd: cur_atk_spd /= 2; break;
-    case effects::StatusEffect::Laser: cur_atk_spd = -1; break;
+    case effects::StatusEffect::Laser:
+      cur_atk_spd = -1;
+      cur_atk_dmg = std::max(cur_atk_dmg / 10, 1);
+      break;
     default: break;
   }
 
@@ -194,8 +215,7 @@ void Defender::populate_projectiles(Projectiles& projectiles) {
         EntityType::DefenderBullet,
         effects::CollisionEffect {
           .type = effects::CollisionEffect::Effect::Damage,
-          .val = opts::game_settings::defender_atk_dmg
-            * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
+          .val = cur_atk_dmg * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
         },
         effect
       );
@@ -214,8 +234,7 @@ void Defender::populate_projectiles(Projectiles& projectiles) {
         EntityType::DefenderBullet,
         effects::CollisionEffect {
           .type = effects::CollisionEffect::Effect::Damage,
-          .val = opts::game_settings::defender_atk_dmg
-            * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
+          .val = cur_atk_dmg * (effect == effects::StatusEffect::DoubleDmg ? 2 : 1),
         },
         effect
       );
