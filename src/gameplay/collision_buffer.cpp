@@ -139,8 +139,10 @@ void CollisionBuffer::clear_back() {
 
 void CollisionBuffer::remove_projectiles(entities::Projectiles& projectiles) {
   std::ranges::sort(proj_rm, std::greater {});
-  for (auto idx : proj_rm) {
-    projectiles.remove(idx);
+  const auto unique_end {std::unique(proj_rm.begin(), proj_rm.end())};
+
+  for (auto it {proj_rm.begin()}; it != unique_end; ++it) {
+    projectiles.remove(*it);
   }
 
   proj_rm.clear();

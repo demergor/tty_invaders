@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cstddef>
 #include <limits>
-#include <stdexcept>
 #include <utility>
 
 #include "tty_invaders/effects/collision_effect.h"
@@ -134,8 +133,8 @@ void Projectiles::remove(effects::StatusEffect effect) {
 }
 
 void Projectiles::remove(std::size_t idx) {
-  assert (!xs.empty());
-  assert (idx < xs.size());
+  assert(!xs.empty());
+  assert(idx < xs.size());
 
   xs[idx] = xs.back();
   xs.pop_back();
@@ -160,6 +159,8 @@ void Projectiles::remove(std::size_t idx) {
 
   status_effects[idx] = status_effects.back();
   status_effects.pop_back();
+
+  assert(vec_sizes_match());
 }
 
 // TODO: Write test

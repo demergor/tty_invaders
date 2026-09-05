@@ -1,5 +1,6 @@
 ## Work In Progress:
-- add differently oriented ship bodies/bullets
-- add bosses
 
 ## Future: 
+- add differently oriented ship bodies/bullets
+- add bosses
+- maybe make invader-movement hitbox-aware?

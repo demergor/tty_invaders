@@ -41,6 +41,7 @@ entities::Invaders generate_invaders(int level) {
   assert(!entities::templates::ships.empty());
   assert(!entities::templates::dmg_projectiles.empty());
 
+  level *= level;
   static std::uniform_int_distribution<std::size_t> formation_dist {
     0,
     gameplay::templates::formations.size() - 1
